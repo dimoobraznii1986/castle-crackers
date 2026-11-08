@@ -29,23 +29,33 @@ const GC := 89                # grid columns (1600 / 18)
 const GR := 50                # grid rows (900 / 18)
 const CASTLE_X := [230.0, 1370.0]
 
-# kind: shoot = fire from cannon, target = click on map, instant = use at once
+# kind: shoot = fire from cannon, target = click on map, instant = use at once, menu = open the upgrade shop
+# group: each turn you can do ONE attack and ONE build move.
 const WEAPONS := [
-	{"id": "ball", "name": "Cannonball", "icon": "⚫", "cost": 0, "kind": "shoot", "secret": false, "desc": "Free. Small blast. The wind barely moves it."},
-	{"id": "rocket", "name": "Rocket", "icon": "🚀", "cost": 30, "kind": "shoot", "secret": false, "desc": "Big blast. The wind pushes it a lot."},
-	{"id": "bounce", "name": "Bouncy Bomb", "icon": "💣", "cost": 25, "kind": "shoot", "secret": false, "desc": "Bounces around. Explodes after 3 seconds."},
-	{"id": "cluster", "name": "Cluster", "icon": "🎆", "cost": 45, "kind": "shoot", "secret": false, "desc": "Explodes into 5 small bombs."},
-	{"id": "drill", "name": "Drill Rocket", "icon": "🔩", "cost": 55, "kind": "shoot", "secret": false, "desc": "Digs through walls and ground, then explodes."},
-	{"id": "mega", "name": "Giant Boulder", "icon": "🪨", "cost": 0, "kind": "shoot", "secret": true, "desc": "SECRET WEAPON. A huge blast."},
-	{"id": "meteor", "name": "Meteor Storm", "icon": "☄️", "cost": 0, "kind": "target", "secret": true, "desc": "SECRET WEAPON. Click a spot. 5 meteors fall from the sky."},
-	{"id": "para", "name": "Paratroopers", "icon": "🪂", "cost": 45, "kind": "instant", "secret": false, "desc": "3 soldiers jump onto the enemy castle. Each turn they break bricks and dig to the treasure."},
-	{"id": "guards", "name": "Guards", "icon": "💂", "cost": 35, "kind": "instant", "secret": false, "desc": "2 guards land on your castle. Each turn they throw spears at enemy soldiers."},
-	{"id": "tower", "name": "Archer Tower", "icon": "🏹", "cost": 60, "kind": "target", "secret": false, "desc": "Click on your castle. The tower shoots enemy paratroopers in the air."},
-	{"id": "wall", "name": "Build Wall", "icon": "🧱", "cost": 35, "kind": "target", "secret": false, "desc": "Click on your side of the map to drop a stone wall."},
-	{"id": "repair", "name": "Repair", "icon": "🔧", "cost": 50, "kind": "instant", "secret": false, "desc": "Fix all cracks and rebuild up to 8 lost bricks."},
-	{"id": "armor", "name": "Iron Armor", "icon": "🛡️", "cost": 110, "kind": "instant", "secret": false, "desc": "Bricks around your treasure become iron. Iron takes half damage."},
+	{"id": "ball", "name": "Cannonball", "icon": "⚫", "cost": 0, "kind": "shoot", "group": "attack", "secret": false, "desc": "Free. Small blast. The wind barely moves it."},
+	{"id": "rocket", "name": "Rocket", "icon": "🚀", "cost": 30, "kind": "shoot", "group": "attack", "secret": false, "desc": "Big blast. The wind pushes it a lot."},
+	{"id": "bounce", "name": "Bouncy Bomb", "icon": "💣", "cost": 25, "kind": "shoot", "group": "attack", "secret": false, "desc": "Bounces around. Explodes after 3 seconds."},
+	{"id": "cluster", "name": "Cluster", "icon": "🎆", "cost": 45, "kind": "shoot", "group": "attack", "secret": false, "desc": "Explodes into 5 small bombs."},
+	{"id": "drill", "name": "Drill Rocket", "icon": "🔩", "cost": 55, "kind": "shoot", "group": "attack", "secret": false, "desc": "Grinds through about 3 bricks, then explodes. Iron stops it."},
+	{"id": "mega", "name": "Giant Boulder", "icon": "🪨", "cost": 0, "kind": "shoot", "group": "attack", "secret": true, "desc": "SECRET WEAPON. A huge blast."},
+	{"id": "meteor", "name": "Meteor Storm", "icon": "☄️", "cost": 0, "kind": "target", "group": "attack", "secret": true, "desc": "SECRET WEAPON. Click a spot. 5 meteors fall from the sky."},
+	{"id": "para", "name": "Paratroopers", "icon": "🪂", "cost": 45, "kind": "instant", "group": "attack", "secret": false, "desc": "3 soldiers jump onto the enemy castle. Each turn they smash bricks and dig to the treasure."},
+	{"id": "guards", "name": "Guards", "icon": "💂", "cost": 35, "kind": "instant", "group": "build", "secret": false, "desc": "2 guards land on your castle. They throw spears and fight with swords."},
+	{"id": "tower", "name": "Archer Tower", "icon": "🏹", "cost": 60, "kind": "target", "group": "build", "secret": false, "desc": "Click on top of your castle. Archers shoot paratroopers and soldiers."},
+	{"id": "wall", "name": "Build Wall", "icon": "🧱", "cost": 35, "kind": "target", "group": "build", "secret": false, "desc": "Click on your side of the map to drop a stone wall."},
+	{"id": "upgrade", "name": "Upgrades", "icon": "⬆️", "cost": 0, "kind": "menu", "group": "build", "secret": false, "desc": "Buy upgrades for your cannon, bricks, archers and soldiers."},
 ]
-const KEYS := ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "Q", "E", "R"]
+const KEYS := ["1", "2", "3", "4", "5", "6", "7", "8", "Q", "W", "E", "R"]
+const NO_WEAPON := {"id": "", "name": "", "icon": "", "cost": 0, "kind": "none", "group": "", "secret": false, "desc": ""}
+
+# Upgrades last for the whole battle. costs[i] = price of level i + 1.
+const UPGRADES := [
+	{"id": "cannon", "name": "Big Cannon", "icon": "💥", "costs": [60, 90, 130], "desc": "Every shot blasts bigger and hits harder."},
+	{"id": "scope", "name": "Aim Scope", "icon": "🔭", "costs": [50, 90], "desc": "Shows the path of your shot while you charge."},
+	{"id": "stone", "name": "Strong Stone", "icon": "🏰", "costs": [60, 100], "desc": "All your bricks get tougher. Drills get stuck sooner."},
+	{"id": "archers", "name": "Master Archers", "icon": "🏹", "costs": [50, 90], "desc": "Towers shoot faster, farther and hit more often."},
+	{"id": "swords", "name": "Sharp Swords", "icon": "⚔️", "costs": [50, 90], "desc": "Your soldiers hit harder and have more health."},
+]
 
 const PROJ := {
 	"ball": {"wind": 0.25, "blast": 38.0, "dmg": 45.0},
@@ -53,7 +63,7 @@ const PROJ := {
 	"bounce": {"wind": 0.4, "blast": 58.0, "dmg": 62.0},
 	"cluster": {"wind": 0.4, "blast": 30.0, "dmg": 30.0},
 	"bomblet": {"wind": 0.2, "blast": 27.0, "dmg": 28.0},
-	"drill": {"wind": 0.6, "blast": 44.0, "dmg": 52.0},
+	"drill": {"wind": 0.6, "blast": 40.0, "dmg": 50.0},
 	"mega": {"wind": 0.15, "blast": 92.0, "dmg": 90.0},
 	"meteor": {"wind": 0.5, "blast": 46.0, "dmg": 48.0},
 	"spear": {"wind": 0.0, "blast": 0.0, "dmg": 0.0},
@@ -62,14 +72,15 @@ const PROJ := {
 
 # Castle shapes, drawn for RED (the enemy is on the right). BLUE uses the mirror image.
 #   # = brick   F = brick with a flag   ^ = brick with a roof   C = the cannon stands here
+#   w = brick with a window   i = brick with an arrow slit   b = brick with a team banner
 # Every shape has a 6-wide room in the middle for the treasure, and a full floor row at the bottom.
 const LAYOUTS := {
 	"Classic": [
 		"#F#.........C.",
 		"###........###",
-		"####.#..#.####",
-		"##############",
-		"##############",
+		"#i##.#..#.##i#",
+		"######bb######",
+		"#w##########w#",
 		"####......####",
 		"####......####",
 		"####......####",
@@ -77,11 +88,11 @@ const LAYOUTS := {
 	],
 	"Keep": [
 		".....#^^#.....",
-		".....####...C.",
+		".....#ww#...C.",
 		"F#...####..###",
-		"##...####..###",
+		"#i...#bb#..#i#",
 		"##############",
-		"##############",
+		"#w##########w#",
 		"####......####",
 		"####......####",
 		"####......####",
@@ -90,8 +101,8 @@ const LAYOUTS := {
 	"Fortress": [
 		"F^..........C.",
 		"##.#.#.#.#.###",
-		"##############",
-		"##############",
+		"#i##bb##bb##i#",
+		"##w########w##",
 		"####......####",
 		"####......####",
 		"####......####",
@@ -100,9 +111,9 @@ const LAYOUTS := {
 	"Spires": [
 		".^............",
 		".#..........C.",
-		".#.........##F",
-		"###...^^...###",
-		"###..####..###",
+		".w.........##F",
+		"###...^^...#i#",
+		"#i#..#ww#..###",
 		"##############",
 		"####......####",
 		"####......####",
@@ -111,11 +122,33 @@ const LAYOUTS := {
 	],
 	"Pyramid": [
 		"......FF......",
-		".....####...C.",
-		"....######.###",
-		"...###########",
-		"..############",
+		".....#ww#...C.",
+		"....##bb##.###",
+		"...##w##w#####",
+		"..####ii######",
 		".#############",
+		"####......####",
+		"####......####",
+		"####......####",
+		"##############",
+	],
+	"Twin Towers": [
+		"^^..........C.",
+		"##.........###",
+		"#w.........#i#",
+		"##..#b##b#..##",
+		"##############",
+		"####......####",
+		"####......####",
+		"####......####",
+		"##############",
+	],
+	"Citadel": [
+		"......^^......",
+		".....#ww#...C.",
+		"F#...####..###",
+		"#i#..#bb#..#i#",
+		"##############",
 		"####......####",
 		"####......####",
 		"####......####",
@@ -129,11 +162,21 @@ const LOOT := [
 	{"id": "cluster", "w": 10, "secret": false},
 	{"id": "drill", "w": 10, "secret": false},
 	{"id": "bounce", "w": 10, "secret": false},
-	{"id": "repair", "w": 8, "secret": false},
-	{"id": "armor", "w": 7, "secret": false},
+	{"id": "repair", "w": 14, "secret": false},
 	{"id": "para", "w": 6, "secret": false},
-	{"id": "meteor", "w": 5, "secret": true},
-	{"id": "mega", "w": 5, "secret": true},
+	{"id": "meteor", "w": 1, "secret": true},
+	{"id": "mega", "w": 1, "secret": true},
+]
+
+# Rare gem crates. They need 3 hits (one hit per shot) and give great rewards.
+# Emerald gives 1 prize, diamond gives 2.
+const GEM_CHANCE := {"emerald": 0.09, "diamond": 0.04}   # chance per crate drop
+const GEM_LOOT := [
+	{"id": "gold300", "w": 30},
+	{"id": "mega", "w": 18},
+	{"id": "meteor", "w": 18},
+	{"id": "arsenal", "w": 18},
+	{"id": "free_upgrade", "w": 16},
 ]
 
 const BOOM_WORDS := ["BOOM!", "KABOOM!", "POW!", "BLAM!", "WHAM!", "KRAK!"]
@@ -152,20 +195,23 @@ class Block:
 	var h := 18.0
 	var hp := 40.0
 	var max_hp := 40.0
-	var iron := false
 	var owner := 0
 	var vy := 0.0
 	var base := Color(0.68, 0.64, 0.56)
 	var cracks := []
 	var flag := false
 	var roof := false
+	var deco := ""        # window, slit, banner
+	var pat := 0          # brick pattern: 0 or 1 (rows take turns)
+	var tones := [0.0, 0.0]
+	var moss := false
 	var dead := false
-	var drilled := false
 
 
 ## Anything that falls: treasure, cannon, crate, soldier, tower.
 class Body:
 	var kind := ""        # treasure, cannon, chest, soldier, tower
+	var tier := ""        # crates: "" (wood), emerald, diamond
 	var role := ""        # soldiers: invader or guard
 	var x := 0.0
 	var y := 0.0
@@ -188,6 +234,8 @@ class Body:
 	var atk := 0.0
 	var cool := 0.0
 	var dead := false
+	var torn := 0.0       # parachute was shot: falls fast
+	var land_v := 0.0
 
 
 class Proj:
@@ -200,7 +248,6 @@ class Proj:
 	var t := 0.0
 	var fuse := 0.0
 	var drilling := false
-	var dtime := 0.0
 	var dx := 0.0
 	var dy := 0.0
 	var dead := false
@@ -208,6 +255,13 @@ class Proj:
 	var target = null     # spears and arrows fly to a target
 	var hit := true
 	var dmg := 0.0
+	var start := Vector2.ZERO   # spears and arrows: start point
+	var prog := 0.0             # 0..1 along the arc
+	var dur := 0.5
+	var arc := 40.0
+	var miss := Vector2.ZERO
+	var energy := 0.0           # drill: how much drilling is left
+	var drill_out := false      # drill already broke through once
 
 
 class Player:
@@ -217,6 +271,8 @@ class Player:
 	var dmg := 0.0
 	var shots := 0
 	var ai := false
+	var lvl := {}         # upgrade levels
+	var last_power := 0.6
 
 
 # ---------------------------------------------------------------- state
@@ -255,6 +311,10 @@ var vs_ai := false
 var ai := {}
 var units_queue: Array = []
 var units_t := 0.0
+var shot_done := false        # this turn: attack used
+var built := false            # this turn: build move used
+var turn_end := false
+var interiors: Array = [[], []]   # castle rooms (cells) for the dark back wall
 var focus := Vector2(800, 450)
 var focus_timer := 0.0
 var focus_zoom := 1.35
@@ -330,6 +390,9 @@ func make_player(i: int) -> Player:
 	p.inv["rocket"] = 1
 	p.inv["bounce"] = 1
 	p.angle = -PI / 4.0 if i == 0 else -PI * 0.75
+	p.lvl = {}
+	for u in UPGRADES:
+		p.lvl[u["id"]] = 0
 	return p
 
 
@@ -358,6 +421,10 @@ func new_game(theme_id: String) -> void:
 	msg = {}
 	ai = {}
 	units_queue = []
+	interiors = [[], []]
+	shot_done = false
+	built = false
+	turn_end = false
 	shake = 0.0
 	charging = false
 	power = 0.0
@@ -403,7 +470,27 @@ func begin_battle(game_mode: String, theme_id: String) -> void:
 
 # ---------------------------------------------------------------- helpers
 func wdef(id: String) -> Dictionary:
-	return wmap[id]
+	return wmap.get(id, NO_WEAPON)
+
+
+func lvl(p: int, id: String) -> int:
+	return players[p].lvl[id]
+
+
+func brick_hp(p: int) -> float:
+	return 40.0 * (1.0 + 0.5 * lvl(p, "stone"))
+
+
+func group_used(id: String) -> bool:
+	var grp: String = wdef(id)["group"]
+	return (grp == "attack" and shot_done) or (grp == "build" and built)
+
+
+func mark_used(id: String) -> void:
+	if wdef(id)["group"] == "attack":
+		shot_done = true
+	else:
+		built = true
 
 
 func team_name(p: int) -> String:
@@ -481,6 +568,11 @@ func make_block(x: float, y: float, owner: int) -> Block:
 	var base: Color = castle_style[owner]["color"]
 	var tint := randf_range(-0.05, 0.05)
 	b.base = Color(base.r + tint, base.g + tint, base.b + tint)
+	b.tones = [randf_range(-0.04, 0.04), randf_range(-0.04, 0.04)]
+	b.pat = int(roundf(y / BS)) % 2
+	b.max_hp = brick_hp(owner)
+	b.hp = b.max_hp
+	b.moss = theme.get("id", "") == "hills" and y > PLATEAU - 3 * BS and randf() < 0.3
 	b.cracks = make_cracks()
 	return b
 
@@ -501,14 +593,35 @@ func build_castle(p: int) -> void:
 			if ch == "C":
 				cannon_cell = Vector2i(c, r)
 				continue
-			if ch != "#" and ch != "F" and ch != "^":
+			if not "#F^wib".contains(ch):
 				continue
 			var b := make_block(x0 + c * BS, top0 + r * BS, p)
 			b.flag = ch == "F"
 			b.roof = ch == "^"
+			b.deco = {"w": "window", "i": "slit", "b": "banner"}.get(ch, "")
 			blocks.append(b)
 			slots.append(Vector2(b.x, b.y))
 	castles[p] = slots
+	# room cells: empty, with bricks left, right and above. They get a dark back wall.
+	var room := []
+	for r in rows.size():
+		var row: String = rows[r]
+		for c in 14:
+			if "#F^wib".contains(row[c]):
+				continue
+			var left := false
+			var right := false
+			var above := false
+			for k in c:
+				left = left or "#F^wib".contains(row[k])
+			for k in range(c + 1, 14):
+				right = right or "#F^wib".contains(row[k])
+			for k in r:
+				above = above or "#F^wib".contains(rows[k][c])
+			if left and right and above:
+				var cc := c if p == 0 else 13 - c
+				room.append(Vector2(x0 + cc * BS, top0 + r * BS))
+	interiors[p] = room
 	var tr := Body.new()
 	tr.kind = "treasure"
 	tr.x = cx - 22.0
@@ -639,7 +752,7 @@ func block_supported(b) -> bool:
 func damage_block(b, amt: float, owner: int) -> float:
 	if b.dead:
 		return 0.0
-	var real := minf(b.hp, amt * (0.45 if b.iron else 1.0))
+	var real := minf(b.hp, amt)
 	b.hp -= real
 	if b.hp <= 0.5:
 		destroy_block(b)
@@ -649,7 +762,7 @@ func damage_block(b, amt: float, owner: int) -> float:
 func destroy_block(b) -> void:
 	b.dead = true
 	wake = true
-	var col: Color = Color("8a9ab0") if b.iron else b.base
+	var col: Color = b.base
 	for i in 5:
 		add_p({"type": "debris", "x": b.x + randf_range(2, b.w - 2), "y": b.y + randf_range(2, b.h - 2),
 			"vx": randf_range(-170, 170), "vy": randf_range(-320, -60), "size": randf_range(3, 7),
@@ -752,7 +865,7 @@ func explode(x: float, y: float, r: float, dmg: float, owner: int) -> void:
 				dealt += 10.0
 	for c in chests.duplicate():
 		if rect_dist(x, y, c) < r + 6:
-			open_chest(c, owner)
+			hit_chest(c, owner)
 
 	# effects
 	var k := r / 45.0
@@ -814,16 +927,43 @@ func make_chest(x: float, y: float) -> Body:
 	return c
 
 
+func gem_color(tier: String) -> Color:
+	return Color("2ecc71") if tier == "emerald" else Color("8ee8ff")
+
+
+## A blast hits a crate. Wood crates open at once.
+## Gem crates need 3 hits, and only 1 hit counts per turn (so one shot = one hit).
+func hit_chest(c: Body, who: int) -> void:
+	if c.tier == "" or who < 0:
+		open_chest(c, who)
+		return
+	if int(c.cool) == turn_no:
+		return
+	c.cool = turn_no
+	c.hp -= 1
+	c.hurt = 1.0
+	if c.hp <= 0:
+		open_chest(c, who)
+		return
+	sparkle(c.x + 15, c.y + 13, 8, gem_color(c.tier))
+	pop_text("CRACK! %d more" % int(c.hp), c.x + 15, c.y - 22, 22, gem_color(c.tier), 1.4)
+	sfx.play("clang")
+
+
 func open_chest(c: Body, who: int) -> void:
 	if c.opened:
 		return
 	c.opened = true
 	chests.erase(c)
-	sparkle(c.x + 15, c.y + 13, 16)
-	for i in 6:
+	var col := Color("c8873a") if c.tier == "" else gem_color(c.tier)
+	sparkle(c.x + 15, c.y + 13, 16 if c.tier == "" else 40, Color("fff6a0") if c.tier == "" else col)
+	for i in (6 if c.tier == "" else 14):
 		add_p({"type": "debris", "x": c.x + 15, "y": c.y + 13, "vx": randf_range(-200, 200), "vy": randf_range(-350, -100),
-			"size": randf_range(4, 8), "rot": randf_range(0, 6), "vr": randf_range(-10, 10), "color": Color("c8873a"), "life": 1.5, "max": 1.5})
+			"size": randf_range(4, 8), "rot": randf_range(0, 6), "vr": randf_range(-10, 10), "color": col, "life": 1.5, "max": 1.5})
 	if who < 0:
+		return
+	if c.tier != "":
+		open_gem(c, who)
 		return
 	var total := 0
 	for l in LOOT:
@@ -860,11 +1000,8 @@ func give_loot(p: int, id: String) -> String:
 			P.inv["bounce"] += 2
 			return "💣 2 Bouncy Bombs"
 		"repair":
-			repair(p)
-			return "🔧 Free repair! Castle fixed"
-		"armor":
-			armor(p)
-			return "🛡️ IRON ARMOR for the castle!"
+			var n := repair(p)
+			return "🔧 Free repair! Castle fixed" if n > 0 else "🔧 A repair kit (nothing to fix)"
 		"para":
 			P.inv["para"] += 1
 			return "🪂 Free paratroopers"
@@ -877,17 +1014,91 @@ func give_loot(p: int, id: String) -> String:
 	return ""
 
 
+func open_gem(c: Body, who: int) -> void:
+	var texts := []
+	for k in (2 if c.tier == "diamond" else 1):
+		var total := 0
+		for l in GEM_LOOT:
+			total += l["w"]
+		var roll := randf() * total
+		var id: String = GEM_LOOT[0]["id"]
+		for l in GEM_LOOT:
+			roll -= l["w"]
+			if roll <= 0:
+				id = l["id"]
+				break
+		texts.append(give_gem_loot(who, id))
+	coins(c.x + 15, c.y + 10, 24)
+	var title := "💎 DIAMOND CRATE!" if c.tier == "diamond" else "💚 EMERALD CRATE!"
+	set_banner(title, "%s got %s" % [team_name(who), " + ".join(texts)], gem_color(c.tier), 3.5)
+	shake = maxf(shake, 8.0)
+	sfx.play("secret")
+
+
+func give_gem_loot(p: int, id: String) -> String:
+	var P: Player = players[p]
+	match id:
+		"gold300":
+			P.gold += 300
+			return "💰 300 gold"
+		"arsenal":
+			P.inv["rocket"] += 2
+			P.inv["drill"] += 2
+			P.inv["cluster"] += 2
+			return "🚀🔩🎆 2 Rockets, 2 Drills, 2 Clusters"
+		"free_upgrade":
+			var ids := []
+			for u in UPGRADES:
+				if upgrade_cost(p, u["id"]) >= 0:
+					ids.append(u["id"])
+			if ids.is_empty():
+				P.gold += 300
+				return "💰 300 gold"
+			var uid: String = ids.pick_random()
+			grant_upgrade(p, uid)
+			for u in UPGRADES:
+				if u["id"] == uid:
+					return "⬆️ FREE %s %s" % [u["icon"], u["name"]]
+	return give_loot(p, id)
+
+
 func drop_chest() -> void:
 	if chests.size() >= 3:
 		return
-	chests.append(make_chest(randf_range(470, 1130), -40))
-	set_msg("📦 A bonus crate is falling! Shoot it to open it.", Color("ffe9a0"))
+	var c := make_chest(randf_range(470, 1130), -40)
+	var has_gem := chests.any(func(o): return o.tier != "")
+	var roll := randf()
+	if not has_gem and roll < GEM_CHANCE["diamond"]:
+		c.tier = "diamond"
+	elif not has_gem and roll < GEM_CHANCE["diamond"] + GEM_CHANCE["emerald"]:
+		c.tier = "emerald"
+	if c.tier != "":
+		c.hp = 3.0
+		c.max_hp = 3.0
+		c.cool = -1.0
+		var gem := "💎 A DIAMOND" if c.tier == "diamond" else "💚 An EMERALD"
+		set_msg("%s crate is falling! Hit it 3 times for a big prize!" % gem, gem_color(c.tier))
+		sfx.play("secret")
+	else:
+		set_msg("📦 A bonus crate is falling! Shoot it to open it.", Color("ffe9a0"))
+	chests.append(c)
 
 
 # ---------------------------------------------------------------- actions
 func can_use(p: int, id: String, quiet := true) -> bool:
 	var P: Player = players[p]
 	var w := wdef(id)
+	if w["kind"] == "none":
+		return false
+	if p == turn and group_used(id):
+		if w["group"] == "attack":
+			return _deny("You already attacked this turn. Build something, or press END TURN.", quiet)
+		return _deny("You already built this turn. Now shoot!", quiet)
+	if id == "upgrade":
+		for u in UPGRADES:
+			if upgrade_cost(p, u["id"]) >= 0 and (mode == "practice" or P.gold >= upgrade_cost(p, u["id"])):
+				return true
+		return _deny("Not enough gold for an upgrade.", quiet)
 	if id == "para" and units_of(p, "invader").size() >= MAX_INVADERS:
 		return _deny("You already have %d soldiers out there." % MAX_INVADERS, quiet)
 	if id == "guards" and units_of(p, "guard").size() >= MAX_GUARDS:
@@ -926,6 +1137,14 @@ func select_weapon(id: String) -> void:
 	if w["secret"] and players[turn].inv[id] <= 0:
 		can_use(turn, id, false)
 		return
+	if group_used(id):
+		can_use(turn, id, false)
+		return
+	if id == "upgrade":
+		if can_use(turn, id, false):
+			sfx.play("click")
+			hud.show_shop()
+		return
 	weapon = id
 	charging = false
 	power = 0.0
@@ -940,6 +1159,8 @@ func use_weapon(mx: float, my: float) -> void:
 	var w := wdef(weapon)
 	var id: String = w["id"]
 	match w["kind"]:
+		"none", "menu":
+			return
 		"shoot":
 			if not can_use(p, id, false):
 				return
@@ -965,6 +1186,7 @@ func use_weapon(mx: float, my: float) -> void:
 					return
 				pay(p, id)
 				meteor_storm(p, mx)
+			mark_used(id)
 			end_action()
 			return
 	# instant
@@ -980,14 +1202,7 @@ func use_weapon(mx: float, my: float) -> void:
 			drop_troops(p, p, 2, "guard")
 			set_msg("💂 Guards are coming to protect your castle.")
 			sfx.play("march")
-		"repair":
-			var n := repair(p)
-			set_msg("Castle repaired!" if n > 0 else "Nothing to repair.")
-			sfx.play("build")
-		"armor":
-			armor(p)
-			set_msg("Iron armor added around the treasure!")
-			sfx.play("secret")
+	mark_used(id)
 	end_action()
 
 
@@ -1015,8 +1230,10 @@ func fire() -> void:
 	c.recoil = 1.0
 	shake = maxf(shake, 4.0)
 	P.shots += 1
+	P.last_power = power
 	power = 0.0
 	sfx.play("shoot")
+	mark_used(id)
 	end_action()
 
 
@@ -1028,12 +1245,68 @@ func end_action() -> void:
 	hud.refresh_bar()
 
 
+## Upgrade shop. Returns the price of the next level, or -1 at max level.
+func upgrade_cost(p: int, id: String) -> int:
+	for u in UPGRADES:
+		if u["id"] == id:
+			var l := lvl(p, id)
+			return -1 if l >= u["costs"].size() else u["costs"][l]
+	return -1
+
+
+func buy_upgrade(id: String) -> bool:
+	var p := turn
+	var cost := upgrade_cost(p, id)
+	if state != "aim" or built or cost < 0:
+		return false
+	if mode != "practice":
+		if players[p].gold < cost:
+			_deny("Not enough gold. It costs %d." % cost, false)
+			return false
+		players[p].gold -= cost
+	grant_upgrade(p, id)
+	var up_name := ""
+	for u in UPGRADES:
+		if u["id"] == id:
+			up_name = "%s %s" % [u["icon"], u["name"]]
+	var c: Body = cannons[p]
+	sparkle(c.x + c.w / 2, c.y, 14, Color("ffe14a"))
+	set_banner("UPGRADE!", "%s level %d" % [up_name, lvl(p, id)], TEAM[p]["color"], 2.0)
+	sfx.play("upgrade")
+	built = true
+	end_action()
+	return true
+
+
+## Add one upgrade level (bought, or from a gem crate).
+func grant_upgrade(p: int, id: String) -> void:
+	players[p].lvl[id] += 1
+	if id == "stone":
+		# make the bricks you have now tougher too
+		for b in blocks:
+			if b.owner == p and not b.dead:
+				var new_max := brick_hp(p)
+				b.hp += new_max - b.max_hp
+				b.max_hp = new_max
+
+
+## Finish the turn now (END TURN button, Enter key, or time is up).
+func end_turn() -> void:
+	if state != "aim":
+		return
+	turn_end = true
+	end_action()
+
+
 func start_turn(first := false) -> void:
 	timer = TURN_TIME
 	wind = roundf(randf_range(-1, 1) * 10.0) / 10.0
 	weapon = "ball"
 	power = 0.0
 	charging = false
+	shot_done = false
+	built = false
+	turn_end = false
 	ai = {}
 	if not first:
 		if mode != "practice":
@@ -1044,13 +1317,31 @@ func start_turn(first := false) -> void:
 	if mode == "practice":
 		set_banner("PRACTICE", "Shot %d. Try any weapon!" % turn_no, TEAM[0]["color"], 1.4)
 	else:
-		var sub := "Destroy the enemy treasure!" if first else "+%d gold" % INCOME
+		var sub := "1 attack + 1 build each turn" if first else "+%d gold" % INCOME
 		set_banner("%s'S TURN" % team_name(turn), sub, TEAM[turn]["color"], 1.8)
 	sfx.play("turn")
 	# your soldiers and towers act first
 	units_queue = [] if first else unit_actors(turn)
 	units_t = 0.9
 	state = "units" if not units_queue.is_empty() else "aim"
+	hud.refresh_bar()
+
+
+## Called when everything is quiet after an action.
+## The turn goes on until the player has attacked AND built (or pressed END TURN).
+func after_action() -> void:
+	var dead := treasures.filter(func(tr): return tr.hp <= 0)
+	if not dead.is_empty():
+		game_over(dead)
+		return
+	if turn_end or (shot_done and built) or timer <= 0 or (shot_done and (players[turn].ai or mode == "practice")):
+		next_turn()
+		return
+	state = "aim"
+	ai = {}
+	charging = false
+	power = 0.0
+	weapon = "" if shot_done else "ball"
 	hud.refresh_bar()
 
 
@@ -1120,21 +1411,27 @@ func build_wall(p: int, g: Dictionary) -> void:
 	sfx.play("build")
 
 
-## Archer tower: must stand on (or right next to) your own castle.
+## Archer tower: must stand on top of your own castle bricks.
 func tower_ghost(mx: float) -> Dictionary:
 	var p := turn
-	var x := roundf(mx) - 12.0
-	var g := {"x": x, "y": 0.0, "w": 24.0, "h": 44.0, "ok": true, "why": ""}
-	var top := minf(surface_y(x + 4), surface_y(x + 20))
+	var x := roundf(mx) - 15.0
+	var g := {"x": x, "y": 0.0, "w": 30.0, "h": 46.0, "ok": true, "why": ""}
+	var top := minf(surface_y(x + 5), surface_y(x + 25))
 	g["y"] = top - g["h"]
-	if absf(mx - CASTLE_X[p]) > 160:
+	var b1 = block_at(x + 5, top + 2)
+	var b2 = block_at(x + 25, top + 2)
+	if absf(mx - CASTLE_X[p]) > 7 * BS + 6 or b1 == null or b2 == null or b1.owner != p or b2.owner != p:
 		g["ok"] = false
-		g["why"] = "Build the tower on your own castle."
-	elif top >= WATER or g["y"] < 20:
+		g["why"] = "Put the tower on top of your castle."
+	elif g["y"] < 20:
 		g["ok"] = false
-		g["why"] = "You cannot build there."
+		g["why"] = "Too high. Build lower."
 	else:
-		for o in cannons + towers + soldiers:
+		for o in cannons:
+			if rects_overlap(g["x"] - 14, g["y"], g["w"] + 28, g["h"], o):
+				g["ok"] = false
+				g["why"] = "Too close to the cannon."
+		for o in towers + soldiers + treasures:
 			if rects_overlap(g["x"], g["y"], g["w"], g["h"], o):
 				g["ok"] = false
 				g["why"] = "Something is in the way."
@@ -1149,12 +1446,24 @@ func build_tower(p: int, g: Dictionary) -> void:
 	tw.y = g["y"] - 20
 	tw.w = g["w"]
 	tw.h = g["h"]
-	tw.hp = 60.0
-	tw.max_hp = 60.0
+	tw.hp = 80.0
+	tw.max_hp = 80.0
+	tw.dir = 1 if p == 0 else -1
 	towers.append(tw)
-	sparkle(tw.x + 12, tw.y + 20, 10, Color.WHITE)
+	sparkle(tw.x + 15, tw.y + 20, 10, Color.WHITE)
 	set_msg("🏹 Archer tower built! It shoots enemy paratroopers.")
 	sfx.play("build")
+
+
+## Best spot for a tower on castle p (for the computer). Returns -1 if there is none.
+func tower_spot(p: int) -> float:
+	var dx := -7.0 * BS
+	while dx <= 7.0 * BS:
+		var x: float = CASTLE_X[p] + dx
+		if tower_ghost(x)["ok"]:
+			return x
+		dx += BS / 2.0
+	return -1.0
 
 
 func meteor_storm(p: int, tx: float) -> void:
@@ -1183,7 +1492,7 @@ func drop_troops(p: int, target: int, n: int, role: String) -> void:
 		s.owner = p
 		s.w = 12.0
 		s.h = 22.0
-		s.hp = 30.0 if role == "invader" else 40.0
+		s.hp = (30.0 if role == "invader" else 40.0) * (1.0 + 0.3 * lvl(p, "swords"))
 		s.max_hp = s.hp
 		s.x = tx - drift - 6.0
 		s.y = -60.0 - i * 45.0
@@ -1219,21 +1528,6 @@ func repair(p: int) -> int:
 	return n + built
 
 
-func armor(p: int) -> int:
-	var tc := center(treasures[p])
-	var n := 0
-	for b in blocks:
-		if b.owner != p or b.dead:
-			continue
-		if Vector2(b.x + 9, b.y + 9).distance_to(tc) < 125:
-			b.iron = true
-			b.max_hp = 100.0
-			b.hp = 100.0
-			n += 1
-			sparkle(b.x + 9, b.y + 9, 2, Color("cfe6ff"))
-	return n
-
-
 # ---------------------------------------------------------------- soldiers and towers (unit turn)
 ## Soldiers and towers of player p act at the start of p's turn.
 func unit_actors(p: int) -> Array:
@@ -1252,19 +1546,67 @@ func unit_act(a) -> bool:
 	if a.dead:
 		return false
 	if a.kind == "tower":
-		var tg = nearest_enemy_soldier(a, 300.0, false)
+		var al := lvl(a.owner, "archers")
+		var tg = nearest_enemy_soldier(a, 320.0 + 60.0 * al, false)
 		if tg == null:
 			return false
-		shoot_missile("arrow", a, tg, 0.6, 20.0)
+		a.atk = 0.6
+		shoot_missile("arrow", a, tg, 0.6 + 0.12 * al, 18.0 + 6.0 * al)
+		if al >= 2:
+			shoot_missile("arrow", a, tg, 0.6 + 0.12 * al, 18.0 + 6.0 * al, 0.25)
 		return true
 	if a.role == "guard":
-		var tg = nearest_enemy_soldier(a, 280.0, false)
-		if tg == null:
-			return false
-		a.atk = 0.5
-		shoot_missile("spear", a, tg, 0.75, 20.0)
-		return true
+		return guard_act(a)
 	return invader_act(a)
+
+
+func sword_dmg(p: int, base: float) -> float:
+	return base * (1.0 + 0.4 * lvl(p, "swords"))
+
+
+## A guard fights an invader next to it. If the invader is farther, the guard
+## throws a spear and jumps closer, so next turn it can use the sword.
+func guard_act(a: Body) -> bool:
+	var tg = nearest_enemy_soldier(a, 300.0, false)
+	if tg == null:
+		return false
+	var dx: float = center(tg).x - center(a).x
+	a.dir = 1 if dx >= 0 else -1
+	if absf(dx) < 34 and absf(center(tg).y - center(a).y) < 30:
+		melee(a, tg)
+		return true
+	a.atk = 0.5
+	shoot_missile("spear", a, tg, 0.75, sword_dmg(a.owner, 16.0))
+	if absf(dx) < 220:
+		leap(a, center(tg).x - signf(dx) * 22.0)
+		pop_text("CHARGE!", a.x + 6, a.y - 10, 16, TEAM[a.owner]["light"], 0.9)
+	return true
+
+
+## Sword or pickaxe hit. Pushes the enemy back. It can fall off the castle!
+func melee(a: Body, tg: Body) -> void:
+	a.atk = 0.5
+	var dm := sword_dmg(a.owner, 16.0)
+	tg.hp -= dm
+	tg.hurt = 1.0
+	var push := signf(center(tg).x - center(a).x)
+	if push == 0:
+		push = float(a.dir)
+	tg.vx = push * 120.0
+	tg.vy = -170.0
+	tg.y -= 2.0
+	pop_text("CLASH!", (a.x + tg.x) / 2 + 6, a.y - 10, 20, Color.WHITE, 0.9)
+	for i in 8:
+		add_p({"type": "spark", "x": (a.x + tg.x) / 2 + 6, "y": a.y + 6, "vx": randf_range(-180, 180), "vy": randf_range(-200, 40), "life": 0.35, "max": 0.35})
+	sfx.play("sword")
+
+
+## Jump toward x (soldiers do not walk, they leap).
+func leap(s: Body, tx: float) -> void:
+	s.vy = -300.0
+	var air := 2.0 * 300.0 / G
+	s.vx = clampf((tx - center(s).x) / air, -180.0, 180.0)
+	s.y -= 2.0
 
 
 func nearest_enemy_soldier(from, max_d: float, in_air: bool):
@@ -1280,14 +1622,23 @@ func nearest_enemy_soldier(from, max_d: float, in_air: bool):
 	return best
 
 
-func shoot_missile(type: String, from, tg, chance: float, dmg: float) -> void:
-	var c := center(from) + Vector2(0, -8)
+## Spears and arrows fly in an arc to the target. `delay` waits before the shot.
+func shoot_missile(type: String, from, tg, chance: float, dmg: float, delay := 0.0) -> void:
+	var c := center(from) + Vector2(0, -8 if type == "spear" else -18)
 	var p := make_proj(type, c.x, c.y, 0, 0, from.owner)
+	p.start = c
 	p.target = tg
 	p.hit = randf() < chance
 	p.dmg = dmg
+	var d := c.distance_to(center(tg))
+	p.dur = clampf(d / 520.0, 0.25, 1.2)
+	p.arc = clampf(d * 0.22, 8.0, 80.0)
+	p.prog = -delay / p.dur
+	if not p.hit:
+		p.miss = Vector2(randf_range(16, 28) * (1 if randf() < 0.5 else -1), randf_range(-24, 6))
 	projs.append(p)
-	sfx.play("bounce")
+	if delay <= 0.0:
+		sfx.play("swoosh", 0.05)
 
 
 ## An invader fights a guard next to it, or steals treasure, or breaks a brick.
@@ -1298,10 +1649,15 @@ func invader_act(s: Body) -> bool:
 	var feet := s.y + s.h
 	for o in soldiers:
 		if o.owner != s.owner and o.role == "guard" and not o.para and absf(o.x + o.w / 2 - fx) < 34 and absf(o.y + o.h - feet) < 30:
+			s.dir = 1 if o.x > s.x else -1
+			melee(s, o)
+			return true
+	for tw in towers:
+		if tw.owner != s.owner and rect_dist(fx, feet - 10, tw) < 16:
 			s.atk = 0.5
-			o.hp -= 15
-			o.hurt = 1.0
-			pop_text("CLASH!", fx, s.y - 8, 18, Color.WHITE, 0.9)
+			tw.hp -= sword_dmg(s.owner, 20.0)
+			tw.hurt = 1.0
+			pop_text("BASH!", tw.x + 15, tw.y - 8, 20, Color.WHITE, 0.9)
 			sfx.play("clang")
 			return true
 	var tr: Body = treasures[e]
@@ -1323,16 +1679,14 @@ func invader_act(s: Body) -> bool:
 		var b = block_at(pt.x, pt.y)
 		if b != null and b.owner == e:
 			s.atk = 0.5
-			damage_block(b, 40.0, s.owner)
+			damage_block(b, sword_dmg(s.owner, 40.0), s.owner)
 			pop_text("CLANG!", fx, s.y - 6, 16, Color.WHITE, 0.8)
 			for i in 5:
 				add_p({"type": "spark", "x": pt.x, "y": pt.y, "vx": randf_range(-120, 120), "vy": randf_range(-160, 20), "life": 0.3, "max": 0.3})
 			sfx.play("clang")
 			return true
-	# nothing to hit: hop toward the treasure
-	s.vy = -240.0
-	s.vx = dir * 110.0
-	s.y -= 2.0
+	# nothing to hit: jump toward the treasure
+	leap(s, fx + dir * 60.0)
 	pop_text("Hop!", fx, s.y - 6, 14, Color.WHITE, 0.7)
 	return true
 
@@ -1351,8 +1705,9 @@ func update_units(dt: float) -> void:
 		if unit_act(a):
 			units_t = 0.65
 			return
-	# all done: wait for spears, arrows and falling bricks
-	if projs.is_empty() and not wake:
+	# all done: wait for spears, arrows, jumps and falling bricks
+	var jumping := soldiers.any(func(s): return s.vy != 0.0 or s.vx != 0.0)
+	if projs.is_empty() and not wake and not jumping:
 		var dead := treasures.filter(func(tr): return tr.hp <= 0)
 		if not dead.is_empty():
 			game_over(dead)
@@ -1393,14 +1748,15 @@ func proj_hit(p: Proj) -> String:
 		if in_rect(x, y, s, 2):
 			return "soldier"
 	for tw in towers:
-		if in_rect(x, y, tw, 2):
+		if tw.owner != p.owner and in_rect(x, y, tw, 2):
 			return "tower"
 	return ""
 
 
 func impact(p: Proj) -> void:
 	var d: Dictionary = PROJ[p.type]
-	explode(p.x, p.y, d["blast"], d["dmg"], p.owner)
+	var l := lvl(p.owner, "cannon") if p.owner >= 0 else 0
+	explode(p.x, p.y, d["blast"] * (1.0 + 0.15 * l), d["dmg"] * (1.0 + 0.2 * l), p.owner)
 	if p.type == "cluster":
 		for i in 5:
 			var b := make_proj("bomblet", p.x, p.y - 8, randf_range(-230, 230), randf_range(-400, -220), p.owner)
@@ -1409,34 +1765,46 @@ func impact(p: Proj) -> void:
 	p.dead = true
 
 
-## Spears and arrows fly straight to their target.
+## Spears and arrows follow an arc to their (moving) target.
 func update_missile(p: Proj, dt: float) -> void:
-	p.t += dt
 	var tg = p.target
-	if tg == null or tg.dead or p.t > 2.5:
+	if tg == null or tg.dead:
 		p.dead = true
 		return
-	var to := center(tg) - Vector2(p.x, p.y)
-	var d := to.length()
-	var speed := 620.0
-	if d <= speed * dt + 4.0:
-		p.dead = true
-		if p.hit:
-			tg.hp -= p.dmg
-			tg.hurt = 1.0
-			if tg.para:
-				tg.hp = 0.0
-				pop_text("POP!", tg.x + 6, tg.y - 20, 22, Color("ffe14a"))
-			else:
-				pop_text("-%d" % int(p.dmg), tg.x + 6, tg.y - 10, 18, Color("ff6a5a"))
-			sfx.play("clang", 0.05)
-		else:
-			pop_text("Miss!", tg.x + 6, tg.y - 10, 16, Color.WHITE, 0.8)
+	p.prog += dt / p.dur
+	if p.prog < 0.0:
 		return
-	p.vx = to.x / d * speed
-	p.vy = to.y / d * speed
-	p.x += p.vx * dt
-	p.y += p.vy * dt
+	var s := minf(p.prog, 1.0)
+	var end := center(tg) + p.miss
+	var pos := p.start.lerp(end, s) + Vector2(0, -sin(PI * s) * p.arc)
+	if dt > 0:
+		p.vx = (pos.x - p.x) / dt
+		p.vy = (pos.y - p.y) / dt
+	p.x = pos.x
+	p.y = pos.y
+	if p.prog < 1.0:
+		return
+	p.dead = true
+	if not p.hit:
+		pop_text("Miss!", tg.x + 6, tg.y - 10, 16, Color.WHITE, 0.8)
+		return
+	if tg.para:
+		# the arrow tears the parachute: the soldier falls fast
+		tg.para = false
+		tg.torn = 1.2
+		tg.hp -= 8.0
+		tg.hurt = 1.0
+		tg.vy = 80.0
+		pop_text("RIIIP!", tg.x + 6, tg.y - 34, 24, Color("ffe14a"))
+		for i in 8:
+			add_p({"type": "debris", "x": tg.x + 6, "y": tg.y - 30, "vx": randf_range(-120, 120), "vy": randf_range(-160, 20), "size": randf_range(3, 6),
+				"rot": randf_range(0, 6), "vr": randf_range(-10, 10), "color": [TEAM[tg.owner]["color"], Color.WHITE].pick_random(), "life": 1.2, "max": 1.2})
+		sfx.play("rip")
+	else:
+		tg.hp -= p.dmg
+		tg.hurt = 1.0
+		pop_text("-%d" % int(p.dmg), tg.x + 6, tg.y - 10, 18, Color("ff6a5a"))
+		sfx.play("clang", 0.05)
 
 
 func update_proj(p: Proj, dt: float) -> void:
@@ -1489,10 +1857,10 @@ func update_proj(p: Proj, dt: float) -> void:
 				sfx.play("bounce")
 				p.last_bounce = t
 			break
-		if p.type == "drill" and hit != "treasure":
+		if p.type == "drill" and not p.drill_out and (hit == "block" or hit == "terrain"):
 			var l := maxf(0.001, Vector2(p.vx, p.vy).length())
 			p.drilling = true
-			p.dtime = 0.8
+			p.energy = 1.0
 			p.dx = p.vx / l
 			p.dy = p.vy / l
 			return
@@ -1512,23 +1880,42 @@ func update_proj(p: Proj, dt: float) -> void:
 		add_p({"type": "smoke", "x": p.x, "y": p.y, "vx": 0.0, "vy": -8.0, "r": 2.5, "life": 0.5, "max": 0.5, "color": Color.WHITE})
 
 
+## The drill grinds bricks one by one. Each brick uses up some of its energy.
+## Iron is very hard. When the energy is gone, the drill is stuck and explodes.
+## If it breaks out into open air, it flies on and explodes at the next hit.
 func update_drill(p: Proj, dt: float) -> void:
-	p.dtime -= dt
-	var step := 270.0 * dt
-	p.x += p.dx * step
-	p.y += p.dy * step
-	terrain.carve(p.x, p.y, 10, false)
+	var nose := Vector2(p.x + p.dx * 6.0, p.y + p.dy * 6.0)
+	var b = block_at(nose.x, nose.y)
+	if b == null:
+		b = block_at(p.x, p.y)
+	var speed: float
+	if b != null:
+		speed = 55.0
+		damage_block(b, 150.0 * dt, p.owner)
+		p.energy -= 1.2 * dt
+		shake = maxf(shake, 1.5)
+		for i in 2:
+			add_p({"type": "spark", "x": nose.x, "y": nose.y, "vx": randf_range(-150, 150) - p.dx * 120, "vy": randf_range(-180, 40) - p.dy * 120, "life": 0.3, "max": 0.3})
+		if randf() < dt * 10.0:
+			add_p({"type": "debris", "x": nose.x, "y": nose.y, "vx": randf_range(-90, 90) - p.dx * 80, "vy": randf_range(-200, -60), "size": randf_range(2, 4),
+				"rot": 0.0, "vr": 6.0, "color": b.base, "life": 0.8, "max": 0.8})
+		sfx.play("drill", 0.09)
+	elif terrain.is_solid(int(nose.x), int(nose.y)) or terrain.is_solid(int(p.x), int(p.y)):
+		speed = 110.0
+		p.energy -= 0.6 * dt
+		terrain.carve(p.x, p.y, 8, false)
+		sfx.play("drill", 0.07)
+	else:
+		# broke out into open air
+		p.drilling = false
+		p.drill_out = true
+		p.vx = p.dx * 240.0
+		p.vy = p.dy * 240.0
+		pop_text("CRUNCH!", p.x, p.y - 14, 18, Color.WHITE, 0.8)
+		return
 	wake = true
-	for o in [Vector2.ZERO, Vector2(-p.dy * 7, p.dx * 7), Vector2(p.dy * 7, -p.dx * 7)]:
-		var b = block_at(p.x + o.x, p.y + o.y)
-		if b != null and not b.drilled:
-			b.drilled = true
-			damage_block(b, 45.0 if b.iron else 60.0, p.owner)
-			p.dtime -= 0.05
-			sfx.play("clang", 0.05)
-	for i in 2:
-		add_p({"type": "spark", "x": p.x, "y": p.y, "vx": randf_range(-150, 150) - p.dx * 100, "vy": randf_range(-150, 50) - p.dy * 100, "life": 0.3, "max": 0.3})
-	sfx.play("drill", 0.07)
+	p.x += p.dx * speed * dt
+	p.y += p.dy * speed * dt
 	for tr in treasures:
 		if not tr.gone and in_rect(p.x, p.y, tr, 2):
 			impact(p)
@@ -1537,7 +1924,8 @@ func update_drill(p: Proj, dt: float) -> void:
 		splash(p.x, WATER)
 		p.dead = true
 		return
-	if p.dtime <= 0:
+	if p.energy <= 0:
+		pop_text("STUCK!", p.x, p.y - 20, 20, Color("ffe14a"), 0.9)
 		impact(p)
 
 
@@ -1619,6 +2007,7 @@ func update_bodies(dt: float) -> void:
 			respawn_cannon(c)
 	for c in chests:
 		c.sway += dt * 2
+		c.hurt = maxf(0.0, c.hurt - dt * 3)
 		var r := fall_body(c, dt, 95.0 if c.para else 750.0)
 		if r != "fall":
 			if c.para:
@@ -1632,19 +2021,22 @@ func update_bodies(dt: float) -> void:
 		if fall_body(tw, dt) == "land":
 			dust(tw.x + tw.w / 2, tw.y + tw.h)
 		tw.hurt = maxf(0.0, tw.hurt - dt * 3)
+		tw.atk = maxf(0.0, tw.atk - dt)
 		# shoot enemy paratroopers in the air
 		tw.cool -= dt
 		if tw.cool <= 0 and tw.y + tw.h < WATER:
-			var tg = nearest_enemy_soldier(tw, 340.0, true)
+			var al := lvl(tw.owner, "archers")
+			var tg = nearest_enemy_soldier(tw, 360.0 + 80.0 * al, true)
 			if tg != null:
-				shoot_missile("arrow", tw, tg, 0.6, 100.0)
-				tw.cool = 2.0
+				shoot_missile("arrow", tw, tg, 0.6 + 0.12 * al, 20.0)
+				tw.atk = 0.6
+				tw.cool = 2.0 / (1.0 + 0.5 * al)
 		if tw.hp <= 0 or tw.y + tw.h > WATER + 4:
 			tw.dead = true
 			for i in 8:
 				add_p({"type": "debris", "x": tw.x + 12, "y": tw.y + 20, "vx": randf_range(-200, 200), "vy": randf_range(-350, -100),
-					"size": randf_range(4, 8), "rot": randf_range(0, 6), "vr": randf_range(-10, 10), "color": Color("8a5a2b"), "life": 1.5, "max": 1.5})
-			pop_text("Tower down!", tw.x + 12, tw.y - 10, 20, Color.WHITE)
+					"size": randf_range(4, 8), "rot": randf_range(0, 6), "vr": randf_range(-10, 10), "color": castle_style[tw.owner]["color"], "life": 1.5, "max": 1.5})
+			pop_text("Tower down!", tw.x + 15, tw.y - 10, 20, Color.WHITE)
 	towers = towers.filter(func(tw): return not tw.dead)
 
 
@@ -1668,7 +2060,9 @@ func update_soldiers(dt: float) -> void:
 		s.anim += dt
 		s.atk = maxf(0.0, s.atk - dt)
 		s.hurt = maxf(0.0, s.hurt - dt * 3)
+		s.torn = maxf(0.0, s.torn - dt)
 		var r: String
+		var v_before: float = s.vy
 		if s.para:
 			s.sway += dt * 2.0
 			s.x += wind * WIND_DRIFT * dt
@@ -1687,6 +2081,14 @@ func update_soldiers(dt: float) -> void:
 			r = fall_body(s, dt)
 			if r != "fall":
 				s.vx = 0.0
+			if r == "land":
+				dust(s.x + 6, s.y + s.h)
+				if v_before > 300.0:
+					var fall_dmg := (v_before - 300.0) * 0.12
+					s.hp -= fall_dmg
+					s.hurt = 1.0
+					pop_text("THUD!", s.x + 6, s.y - 8, 18, Color.WHITE, 0.8)
+					sfx.play("thud", 0.1)
 		if s.x < -30 or s.x > W + 30:
 			s.hp = 0.0
 		if s.y + s.h > WATER + 4:
@@ -1698,7 +2100,7 @@ func update_soldiers(dt: float) -> void:
 			pop_text("Ouch!", s.x + 6, s.y - 4, 16, TEAM[s.owner]["light"])
 			continue
 		for c in chests.duplicate():
-			if rects_overlap(s.x, s.y, s.w, s.h, c):
+			if c.tier == "" and rects_overlap(s.x, s.y, s.w, s.h, c):
 				open_chest(c, s.owner)
 	soldiers = soldiers.filter(func(s): return not s.dead)
 
@@ -1774,40 +2176,25 @@ func _ai_decide() -> void:
 	var p := turn
 	var P: Player = players[p]
 	var e := 1 - p
+	if not built:
+		_ai_build()
+		if state == "aim":
+			built = true   # nothing to build: go on to the attack
+			ai["t"] = 0.4
+		return
 	var choice := "ball"
 	if P.inv["meteor"] > 0:
 		choice = "meteor"
 	elif P.inv["mega"] > 0:
 		choice = "mega"
-	elif not threats_to(p).is_empty() and units_of(p, "guard").size() < 2 and can_use(p, "guards") and randf() < 0.75:
-		choice = "guards"
-	elif count_blocks(p) < 55 and can_use(p, "repair") and randf() < 0.5:
-		choice = "repair"
-	elif treasures[p].hp < 50 and can_use(p, "armor") and randf() < 0.35:
-		choice = "armor"
-	elif towers_of(p).is_empty() and turn_no > 3 and can_use(p, "tower") and randf() < 0.15:
-		choice = "tower"
-	elif turn_no > 1 and can_use(p, "para") and randf() < 0.2:
+	elif turn_no > 1 and can_use(p, "para") and units_of(p, "invader").size() < 3 and randf() < 0.25:
 		choice = "para"
-	elif can_use(p, "drill") and randf() < 0.35:
+	elif can_use(p, "drill") and randf() < 0.3:
 		choice = "drill"
 	elif can_use(p, "rocket") and absf(wind) < 0.6 and randf() < 0.5:
 		choice = "rocket"
 	elif can_use(p, "cluster") and randf() < 0.3:
 		choice = "cluster"
-	if choice == "tower":
-		var spot := -1.0
-		for dx in [0.0, -60.0, 60.0, -110.0, 110.0, -30.0, 30.0]:
-			if tower_ghost(CASTLE_X[p] + dx)["ok"]:
-				spot = CASTLE_X[p] + dx
-				break
-		if spot < 0:
-			choice = "ball"
-		else:
-			weapon = choice
-			hud.refresh_bar()
-			use_weapon(spot, 300)
-			return
 	weapon = choice
 	hud.refresh_bar()
 	var w := wdef(choice)
@@ -1822,6 +2209,37 @@ func _ai_decide() -> void:
 	ai["angle"] = shot.x + randf_range(-0.04, 0.04)
 	ai["power"] = clampf(shot.y + randf_range(-0.035, 0.035), 0.05, 1.0)
 	ai["phase"] = "aim"
+
+
+## The computer's build move: defend, repair, build or upgrade. Sometimes it skips.
+func _ai_build() -> void:
+	var p := turn
+	var P: Player = players[p]
+	var choice := ""
+	if not threats_to(p).is_empty() and units_of(p, "guard").size() < 2 and can_use(p, "guards") and randf() < 0.8:
+		choice = "guards"
+	elif towers_of(p).is_empty() and turn_no > 3 and can_use(p, "tower") and randf() < 0.35:
+		choice = "tower"
+	elif P.gold >= 110 and randf() < 0.5:
+		var ups := ["cannon", "stone", "swords"]
+		if not towers_of(p).is_empty():
+			ups.append("archers")
+		ups.shuffle()
+		for id in ups:
+			var cost := upgrade_cost(p, id)
+			if cost >= 0 and P.gold - cost >= 40:
+				buy_upgrade(id)
+				return
+	if choice == "":
+		return
+	weapon = choice
+	hud.refresh_bar()
+	if choice == "tower":
+		var spot := tower_spot(p)
+		if spot >= 0:
+			use_weapon(spot, 300)
+		return
+	use_weapon(0, 0)
 
 
 ## Try many angles and powers. Return the best Vector2(angle, power).
@@ -1882,6 +2300,28 @@ func sim_shot(p: int, type: String, ang: float, pw: float, target: Vector2) -> f
 	return 1e9
 
 
+## Points along the path of a shot (for the Aim Scope upgrade). Stops at the first hit.
+func trajectory(p: int, type: String, ang: float, pw: float, max_t: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	var c: Body = cannons[p]
+	var sp := MIN_SPEED + pw * (MAX_SPEED - MIN_SPEED)
+	var pos := Vector2(c.x + c.w / 2.0 + cos(ang) * 32.0, c.y + 8.0 + sin(ang) * 32.0)
+	var v := Vector2(cos(ang), sin(ang)) * sp
+	var wk: float = PROJ[type]["wind"]
+	var dt := 1.0 / 60.0
+	var tt := 0.0
+	while tt < max_t:
+		for i in 4:
+			v.x += wind * WIND_ACC * wk * dt / 4.0
+			v.y += G * dt / 4.0
+			pos += v * dt / 4.0
+		tt += dt
+		pts.append(pos)
+		if pos.y >= WATER or pos.x < 0 or pos.x > W or (tt > 0.05 and pos.y > 0 and solid_at(pos.x, pos.y)):
+			break
+	return pts
+
+
 # ---------------------------------------------------------------- input
 func aim_at(m: Vector2) -> void:
 	var c: Body = cannons[turn]
@@ -1911,6 +2351,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			toggle_mute()
 			return
 		if not human_turn():
+			return
+		if (k.keycode == KEY_ENTER or k.keycode == KEY_KP_ENTER) and k.pressed and not k.echo:
+			if shot_done or built:
+				end_turn()
 			return
 		var P: Player = players[turn]
 		if k.keycode == KEY_SPACE:
@@ -1974,7 +2418,7 @@ func update(dt: float) -> void:
 			ai_update(dt)
 		if state == "aim" and timer <= 0:
 			set_msg("Time is up!", Color("ffb0a0"))
-			end_action()
+			end_turn()
 
 	for p in projs:
 		update_proj(p, dt)
@@ -1998,7 +2442,7 @@ func update(dt: float) -> void:
 		else:
 			settle = 0.0
 		if settle > 0.8 or busy_t > 25:
-			next_turn()
+			after_action()
 
 	shake = maxf(0.0, shake - dt * 30)
 	if not banner.is_empty():

@@ -32,6 +32,11 @@ func _ready() -> void:
 	streams["turn"] = _wav(_mix([_tone(660.0, 660.0, 0.08, 0.2, "triangle"), _delay(_tone(990.0, 990.0, 0.12, 0.2, "triangle"), 0.09)]))
 	streams["win"] = _wav(_mix(_seq([523.0, 523.0, 523.0, 659.0, 784.0, 659.0, 784.0, 1047.0], 0.15, 0.25, 0.3, "square")))
 	streams["error"] = _wav(_tone(180.0, 140.0, 0.15, 0.25, "square"))
+	streams["swoosh"] = _wav(_noise(0.14, 5000.0, 2200.0, 0.22, true))
+	streams["rip"] = _wav(_mix([_noise(0.3, 4200.0, 900.0, 0.4, true), _tone(500.0, 200.0, 0.25, 0.15, "square")]))
+	streams["thud"] = _wav(_mix([_noise(0.18, 600.0, 80.0, 0.5), _tone(110.0, 50.0, 0.15, 0.5, "sine")]))
+	streams["sword"] = _wav(_mix([_noise(0.08, 6000.0, 3000.0, 0.25, true), _delay(_tone(1500.0, 1100.0, 0.16, 0.25, "triangle"), 0.05)]))
+	streams["upgrade"] = _wav(_mix(_seq([392.0, 494.0, 587.0, 784.0, 988.0], 0.06, 0.18, 0.25, "triangle")))
 
 
 func play(name: String, min_gap := 0.0, volume_db := 0.0) -> void:

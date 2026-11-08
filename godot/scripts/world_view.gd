@@ -12,6 +12,7 @@ var g   # the main game node
 func _draw() -> void:
 	if g == null:
 		return
+	_draw_interiors()
 	_draw_blocks()
 	for tr in g.treasures:
 		_draw_treasure(tr)
@@ -33,45 +34,201 @@ func _reset() -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
-# ---------------------------------------------------------------- castle bricks
+# ---------------------------------------------------------------- castle
+## Dark back wall of the castle rooms, and torches in the treasure room.
+## A room cell is drawn only while there are still bricks above it.
+func _draw_interiors() -> void:
+	for p in 2:
+		if g.castle_style.size() < 2:
+			return
+		var stone: Color = g.castle_style[p]["color"]
+		var dark := stone.darkened(0.58)
+		var line := stone.darkened(0.72)
+		for cell in g.interiors[p]:
+			if not _covered(cell.x + 9, cell.y + 9, p):
+				continue
+			draw_rect(Rect2(cell.x, cell.y, 18, 18), dark)
+			draw_line(Vector2(cell.x, cell.y + 9), Vector2(cell.x + 18, cell.y + 9), line, 1.0)
+			var jx: float = cell.x + (9.0 if int(cell.y / 18.0) % 2 == 0 else 0.0)
+			draw_line(Vector2(jx, cell.y), Vector2(jx, cell.y + 9), line, 1.0)
+			draw_line(Vector2(cell.x + 18 - (jx - cell.x), cell.y + 9), Vector2(cell.x + 18 - (jx - cell.x), cell.y + 18), line, 1.0)
+		# torches on the treasure room walls
+		var x0: float = g.CASTLE_X[p] - 7 * 18
+		var ty: float = g.PLATEAU - 18 - 40
+		for tx in [x0 + 4 * 18 + 7, x0 + 10 * 18 - 7]:
+			if not _covered(tx, ty, p):
+				continue
+			var fl := 0.8 + 0.2 * sin(g.t * 13.0 + tx) + 0.1 * sin(g.t * 23.0)
+			draw_circle(Vector2(tx, ty), 26 * fl, Color(1.0, 0.7, 0.3, 0.13))
+			draw_circle(Vector2(tx, ty), 14 * fl, Color(1.0, 0.75, 0.35, 0.18))
+			draw_line(Vector2(tx, ty + 4), Vector2(tx, ty + 15), Color("5a3416"), 3)
+			draw_circle(Vector2(tx, ty), 4.5 * fl, Color("ff8a2a"))
+			draw_circle(Vector2(tx, ty - 2 * fl), 3.0 * fl, Color("ffe14a"))
+
+
+func _covered(x: float, y: float, p: int) -> bool:
+	for k in range(1, 7):
+		var b = g.block_at(x, y - k * 18)
+		if b != null and b.owner == p:
+			return true
+	return false
+
+
 func _draw_blocks() -> void:
+	# soft shadow on the ground under the castles
+	for p in 2:
+		var cx: float = g.CASTLE_X[p]
+		draw_rect(Rect2(cx - 7 * 18 - 10, g.PLATEAU - 2, 14 * 18 + 20, 8), Color(0, 0, 0, 0.16))
+	for b in g.blocks:
+		if not b.dead:
+			_draw_brick(b)
+	var snow: bool = g.theme.get("snow", false)
+	for b in g.blocks:
+		if not b.dead:
+			_draw_edges(b, snow)
 	for b in g.blocks:
 		if b.dead:
 			continue
-		var r: float = b.hp / b.max_hp
-		var k := 0.62 + 0.38 * r
-		var col: Color = Color8(122, 138, 162) if b.iron else b.base
-		col = Color(col.r * k, col.g * k, col.b * k)
-		draw_rect(Rect2(b.x, b.y, b.w, b.h), col)
-		draw_rect(Rect2(b.x + 2, b.y + 2, b.w - 4, 3), Color(1, 1, 1, 0.28))
-		draw_rect(Rect2(b.x + 2, b.y + b.h - 4, b.w - 4, 3), Color(0, 0, 0, 0.22))
-		draw_rect(Rect2(b.x + 0.75, b.y + 0.75, b.w - 1.5, b.h - 1.5), Color8(59, 48, 39), false, 1.5)
-		if b.iron:
-			for o in [Vector2(4, 4), Vector2(b.w - 4, 4), Vector2(4, b.h - 4), Vector2(b.w - 4, b.h - 4)]:
-				draw_circle(Vector2(b.x, b.y) + o, 1.6, Color("e4ecf5"))
-		var n := 3 if r < 0.3 else (2 if r < 0.6 else (1 if r < 0.92 else 0))
-		for i in n:
-			var pts: PackedVector2Array = b.cracks[i]
-			var moved := PackedVector2Array()
-			for pt in pts:
-				moved.append(pt + Vector2(b.x, b.y))
-			draw_polyline(moved, Color8(30, 24, 19), 1.4)
-	for b in g.blocks:
-		if b.dead:
-			continue
+		if b.deco == "banner":
+			_draw_banner(b)
 		if b.flag:
 			_draw_flag(b)
 		if b.roof:
 			_draw_roof(b)
 
 
-func _draw_roof(b) -> void:
+## One block = 2 rows of bricks with mortar lines (running bond).
+func _draw_brick(b) -> void:
+	var x: float = b.x
+	var y: float = b.y
+	var r: float = clampf(b.hp / b.max_hp, 0.0, 1.0)
+	var k := 0.62 + 0.38 * r
+	var base: Color = b.base
+	for course in 2:
+		var t: float = b.tones[course]
+		var c := Color((base.r + t) * k, (base.g + t) * k, (base.b + t) * k)
+		draw_rect(Rect2(x, y + course * 9, 18, 9), c)
+		draw_rect(Rect2(x, y + course * 9, 18, 2), Color(1, 1, 1, 0.16))
+		draw_rect(Rect2(x, y + course * 9 + 7, 18, 2), Color(0, 0, 0, 0.1))
+	var mortar := Color(base.r * 0.5 * k, base.g * 0.5 * k, base.b * 0.5 * k)
+	draw_line(Vector2(x, y + 9), Vector2(x + 18, y + 9), mortar, 1.2)
+	draw_line(Vector2(x, y + 0.5), Vector2(x + 18, y + 0.5), mortar, 1.0)
+	var mid: int = b.pat
+	draw_line(Vector2(x + 9, y + mid * 9), Vector2(x + 9, y + mid * 9 + 9), mortar, 1.2)
+	draw_line(Vector2(x + 0.5, y + (1 - mid) * 9), Vector2(x + 0.5, y + (1 - mid) * 9 + 9), mortar, 1.2)
+	if b.moss:
+		var mc := Color(0.33, 0.55, 0.2, 0.85)
+		draw_circle(Vector2(x + 4, y + 16), 3.0, mc)
+		draw_circle(Vector2(x + 8, y + 17), 2.2, mc)
+		draw_circle(Vector2(x + 2, y + 12), 1.8, mc)
+	# decorations
+	match b.deco:
+		"window":
+			var hole := Color(0.12, 0.09, 0.07)
+			draw_rect(Rect2(x + 5, y + 7, 8, 9), hole)
+			draw_circle(Vector2(x + 9, y + 7), 4, hole)
+			var glow := 0.55 + 0.2 * sin(g.t * 2.5 + x)
+			draw_rect(Rect2(x + 6, y + 8, 6, 7), Color(1.0, 0.78, 0.35, glow))
+			draw_circle(Vector2(x + 9, y + 7.5), 3, Color(1.0, 0.82, 0.4, glow))
+			draw_line(Vector2(x + 9, y + 4), Vector2(x + 9, y + 16), hole, 1.2)
+			draw_line(Vector2(x + 5, y + 10), Vector2(x + 13, y + 10), hole, 1.2)
+			draw_rect(Rect2(x + 4, y + 15.5, 10, 2), Color(1, 1, 1, 0.35))
+		"slit":
+			var hole := Color(0.1, 0.07, 0.05)
+			draw_rect(Rect2(x + 7.5, y + 3, 3, 12), hole)
+			draw_rect(Rect2(x + 5, y + 8, 8, 2.5), hole)
+	# cracks
+	var n := 3 if r < 0.3 else (2 if r < 0.6 else (1 if r < 0.92 else 0))
+	for i in n:
+		var pts: PackedVector2Array = b.cracks[i]
+		var moved := PackedVector2Array()
+		for pt in pts:
+			moved.append(pt + Vector2(x, y))
+		draw_polyline(moved, Color8(30, 24, 19), 1.4)
+
+
+## Thick ink line on every open side, so the castle looks like one cartoon shape.
+## Open tops get battlements (and snow on the snowy map).
+func _draw_edges(b, snow: bool) -> void:
+	var x: float = b.x
+	var y: float = b.y
+	var open_top := _open(x + 9, y - 3)
+	if open_top:
+		if not b.roof and not b.flag and b.vy == 0.0 and int(roundf(x / 18.0)) % 2 == 0 and _free_above(x, y):
+			var mr := Rect2(x + 2, y - 7, 14, 8)
+			var mc: Color = b.base
+			draw_rect(mr, mc)
+			draw_rect(Rect2(mr.position.x, mr.position.y, 14, 2), Color(1, 1, 1, 0.2))
+			draw_polyline(PackedVector2Array([Vector2(x + 2, y), Vector2(x + 2, y - 7), Vector2(x + 16, y - 7), Vector2(x + 16, y)]), INK, 2.5)
+			if snow:
+				Art.fill_rrect(self, Rect2(x + 1, y - 10, 16, 5), 2.5, Color(0.97, 0.98, 1.0))
+		draw_line(Vector2(x - 1, y), Vector2(x + 19, y), INK, 2.5)
+		if snow:
+			Art.fill_rrect(self, Rect2(x - 1, y - 3, 20, 5), 2.5, Color(0.97, 0.98, 1.0))
+			draw_circle(Vector2(x + 5, y + 2), 1.8, Color(0.97, 0.98, 1.0))
+	if _open(x + 9, y + 21) and not g.solid_at(x + 9, y + 19.5, b):
+		draw_line(Vector2(x - 1, y + 18), Vector2(x + 19, y + 18), INK, 2.5)
+	if _open(x - 3, y + 9):
+		draw_line(Vector2(x, y - 1), Vector2(x, y + 19), INK, 2.5)
+	if _open(x + 21, y + 9):
+		draw_line(Vector2(x + 18, y - 1), Vector2(x + 18, y + 19), INK, 2.5)
+
+
+func _open(x: float, y: float) -> bool:
+	return g.block_at(x, y) == null
+
+
+func _free_above(x: float, y: float) -> bool:
+	for o in g.cannons + g.towers:
+		if g.rects_overlap(x, y - 10, 18, 10, o):
+			return false
+	return true
+
+
+func _draw_banner(b) -> void:
 	var T: Dictionary = g.TEAM[b.owner]
-	var pts := PackedVector2Array([Vector2(b.x - 4, b.y + 1), Vector2(b.x + b.w + 4, b.y + 1), Vector2(b.x + b.w / 2, b.y - 26)])
-	Art.outline_poly(self, pts, T["color"], INK, 2)
-	draw_line(Vector2(b.x + 2, b.y - 6), Vector2(b.x + b.w - 2, b.y - 6), T["dark"], 2)
-	draw_line(Vector2(b.x + b.w / 2, b.y - 26), Vector2(b.x + b.w / 2, b.y - 36), INK, 2)
-	draw_circle(Vector2(b.x + b.w / 2, b.y - 37), 2.5, Color("ffd84a"))
+	var x: float = b.x + 3
+	var y: float = b.y + 1
+	var sway := sin(g.t * 2.0 + b.x) * 1.0
+	var pts := PackedVector2Array([Vector2(x, y), Vector2(x + 12, y), Vector2(x + 12 + sway, y + 21), Vector2(x + 6 + sway, y + 16), Vector2(x + sway, y + 21)])
+	Art.outline_poly(self, pts, T["color"], INK, 1.5)
+	draw_line(Vector2(x - 1, y), Vector2(x + 13, y), Color("6b4a22"), 2)
+	draw_circle(Vector2(x + 6 + sway * 0.5, y + 8), 2.8, Color("ffd84a"))
+
+
+## Roof cones. Roof bricks side by side share one big cone.
+func _draw_roof(b) -> void:
+	var left = g.block_at(b.x - 9, b.y + 9)
+	if left != null and left.roof and absf(left.y - b.y) < 1.0:
+		return
+	var n := 1
+	var cur = b
+	while n < 6:
+		var nb = g.block_at(cur.x + 27, cur.y + 9)
+		if nb == null or not nb.roof or absf(nb.y - b.y) > 1.0:
+			break
+		n += 1
+		cur = nb
+	var T: Dictionary = g.TEAM[b.owner]
+	var w := n * 18.0
+	var h := 24.0 + w * 0.6
+	var x0: float = b.x - 5
+	var x1: float = b.x + w + 5
+	var top := Vector2(b.x + w / 2, b.y - h)
+	Art.outline_poly(self, PackedVector2Array([Vector2(x0, b.y + 1), Vector2(x1, b.y + 1), top]), T["color"], INK, 2.5)
+	# shingle rows
+	for i in range(1, 4):
+		var f := i / 4.0
+		var yy: float = b.y + 1 - h * f
+		var half := (x1 - x0) / 2.0 * (1.0 - f)
+		draw_line(Vector2(top.x - half + 2, yy), Vector2(top.x + half - 2, yy), T["dark"], 2)
+	draw_colored_polygon(PackedVector2Array([Vector2(top.x, top.y + 4), Vector2(top.x + 3, b.y - 2), Vector2(x1 - 6, b.y - 2)]), Color(0, 0, 0, 0.15))
+	# pole and a small pennant
+	draw_line(top, top + Vector2(0, -14), INK, 2)
+	var dir := 1.0 if g.wind >= 0 else -1.0
+	var wv := sin(g.t * 8.0 + b.x) * 1.5
+	draw_colored_polygon(PackedVector2Array([top + Vector2(0, -14), top + Vector2(dir * 12, -11 + wv), top + Vector2(0, -8)]), Color("ffd84a"))
+	draw_circle(top + Vector2(0, -15), 2, Color("ffd84a"))
 
 
 func _draw_flag(b) -> void:
@@ -147,8 +304,13 @@ func _draw_chest(c) -> void:
 			for k in 5:
 				var a := PI + (i + k / 4.0) * PI / 5.0
 				pts.append(pc + Vector2(cos(a), sin(a)) * 32)
-			draw_colored_polygon(pts, Color.WHITE if i % 2 == 1 else Color("e8412f"))
+			var chute: Color = Color("e8412f") if c.tier == "" else g.gem_color(c.tier)
+			draw_colored_polygon(pts, Color.WHITE if i % 2 == 1 else chute)
 		draw_arc(pc, 32, PI, TAU, 24, INK, 2.5, true)
+	if c.tier != "":
+		_draw_gem_chest(c, x, y, w, h)
+		_reset()
+		return
 	draw_rect(Rect2(x, y, w, h), Color("c8873a"))
 	draw_line(Vector2(x, y + h / 3), Vector2(x + w, y + h / 3), Color("8a5520"), 1.5)
 	draw_line(Vector2(x, y + 2 * h / 3), Vector2(x + w, y + 2 * h / 3), Color("8a5520"), 1.5)
@@ -159,6 +321,39 @@ func _draw_chest(c) -> void:
 	_reset()
 
 
+## Emerald or diamond crate: shiny, glowing, with cracks after each hit.
+func _draw_gem_chest(c, x: float, y: float, w: float, h: float) -> void:
+	var gem: Color = g.gem_color(c.tier)
+	var pulse := 0.5 + 0.5 * sin(g.t * 4.0)
+	for i in 4:
+		draw_circle(Vector2(0, y + h / 2), 34.0 - i * 6.0, Color(gem, 0.06 + 0.05 * pulse))
+	var body := gem.darkened(0.25).lerp(Color.WHITE, c.hurt * 0.7)
+	draw_rect(Rect2(x, y, w, h), body)
+	# shiny facets
+	draw_colored_polygon(PackedVector2Array([Vector2(x, y), Vector2(x + w * 0.45, y), Vector2(x, y + h * 0.6)]), Color(1, 1, 1, 0.35))
+	draw_colored_polygon(PackedVector2Array([Vector2(x + w, y + h), Vector2(x + w * 0.55, y + h), Vector2(x + w, y + h * 0.4)]), Color(0, 0, 0, 0.18))
+	# gold frame
+	draw_rect(Rect2(x, y, w, h), Color("ffcc1f"), false, 3)
+	draw_rect(Rect2(x, y, w, h), INK, false, 1.2)
+	draw_line(Vector2(x, y + h / 2), Vector2(x + w, y + h / 2), Color("ffcc1f"), 2)
+	# gem on the front
+	var gc := Vector2(0, y + h / 2)
+	var d := PackedVector2Array([gc + Vector2(0, -7), gc + Vector2(6, 0), gc + Vector2(0, 7), gc + Vector2(-6, 0)])
+	Art.outline_poly(self, d, gem.lightened(0.4), INK, 1.5)
+	# cracks: one per hit
+	var hits: int = int(c.max_hp - c.hp)
+	var cracks := [
+		[Vector2(x + 3, y + 4), Vector2(x + 9, y + 10), Vector2(x + 7, y + 16)],
+		[Vector2(x + w - 3, y + 3), Vector2(x + w - 10, y + 9), Vector2(x + w - 8, y + 20)],
+	]
+	for i in mini(hits, cracks.size()):
+		draw_polyline(PackedVector2Array(cracks[i]), INK, 2)
+	# twinkle and hits left
+	if sin(g.t * 3.0 + c.x) > 0.6:
+		Art.star(self, Vector2(x + w - 4, y + 3), 5, Color.WHITE)
+	Art.text(self, "%d" % int(c.hp), Vector2(0, y - 6), 16, Color.WHITE)
+
+
 # ---------------------------------------------------------------- cannon
 func _draw_cannon(c, p: int) -> void:
 	var P = g.players[p]
@@ -166,11 +361,16 @@ func _draw_cannon(c, p: int) -> void:
 	var py: float = c.y + 8
 	draw_set_transform(Vector2(px, py), P.angle, Vector2.ONE)
 	var rec: float = -c.recoil * 8
-	Art.fill_rrect(self, Rect2(rec - 8, -7, 40, 14), 6, Color("3d3d46"), Color("141418"), 2.5)
-	draw_rect(Rect2(rec - 4, -5, 32, 3), Color(1, 1, 1, 0.28))
-	draw_rect(Rect2(rec + 18, -8, 5, 16), g.TEAM[p]["color"])
-	draw_rect(Rect2(rec + 18, -8, 5, 16), Color("141418"), false, 2)
-	Art.fill_rrect(self, Rect2(rec + 30, -8.5, 6, 17), 2, Color("26262c"), Color("141418"), 2)
+	var l: int = g.lvl(p, "cannon")
+	var bl := 40.0 + l * 5.0
+	var bh := 14.0 + l * 2.0
+	Art.fill_rrect(self, Rect2(rec - 8, -bh / 2, bl, bh), 6, Color("3d3d46"), Color("141418"), 2.5)
+	draw_rect(Rect2(rec - 4, -bh / 2 + 2, bl - 8, 3), Color(1, 1, 1, 0.28))
+	draw_rect(Rect2(rec + 18, -bh / 2 - 1, 5, bh + 2), g.TEAM[p]["color"])
+	draw_rect(Rect2(rec + 18, -bh / 2 - 1, 5, bh + 2), Color("141418"), false, 2)
+	for i in l:
+		draw_rect(Rect2(rec + 4 + i * 6, -bh / 2 - 1, 3, bh + 2), Color("ffcc1f"))
+	Art.fill_rrect(self, Rect2(rec + bl - 10, -bh / 2 - 1.5, 6, bh + 3), 2, Color("26262c"), Color("141418"), 2)
 	_reset()
 	var carriage := PackedVector2Array([Vector2(c.x + 3, c.y + c.h - 5), Vector2(c.x + c.w - 3, c.y + c.h - 5), Vector2(px + 9, py + 1), Vector2(px - 9, py + 1)])
 	Art.outline_poly(self, carriage, Color("7a4a22"), Color8(43, 23, 9), 2.5)
@@ -206,69 +406,135 @@ func _draw_soldier(s) -> void:
 			draw_colored_polygon(pts, T["color"] if i % 2 == 0 else Color.WHITE)
 		draw_arc(pc, 24, PI, TAU, 20, INK, 2, true)
 		_reset()
+	elif s.torn > 0:
+		# torn parachute flaps above the falling soldier
+		var a := clampf(s.torn, 0.0, 1.0)
+		for i in 3:
+			var ox := (i - 1) * 7.0
+			var wv := sin(g.t * 30.0 + i * 2.0) * 5.0
+			draw_line(Vector2(fx, by - 22), Vector2(fx + ox + wv, by - 46), Color(0.2, 0.2, 0.2, a), 1.0)
+			draw_colored_polygon(PackedVector2Array([Vector2(fx + ox + wv - 4, by - 46), Vector2(fx + ox + wv + 4, by - 46), Vector2(fx + ox - wv * 0.5, by - 34)]),
+				Color(T["color"] if i != 1 else Color.WHITE, a))
 	var ph := 0.0
-	if s.vx != 0.0:
-		ph = sin(s.anim * 14) * 3.5
+	if s.vx != 0.0 or s.vy < 0.0:
+		ph = 3.0
 	elif s.para:
 		ph = sin(s.anim * 5) * 2.0
 	draw_line(Vector2(fx - 2, by - 7), Vector2(fx - 2 + ph, by - 1), INK, 3)
 	draw_line(Vector2(fx + 2, by - 7), Vector2(fx + 2 - ph, by - 1), INK, 3)
-	# spear (invader) or tall spear with flag (guard)
-	var swing := sin(s.atk * 12) * 0.8 if s.atk > 0 else 0.0
+	# weapon: sword (guard) or pickaxe (invader). It swings when attacking.
+	var swing := sin(s.atk * 12) * 1.1 if s.atk > 0 else 0.0
 	draw_set_transform(Vector2(fx + d * 5, by - 12), d * (0.35 + swing), Vector2.ONE)
-	draw_line(Vector2(0, 6), Vector2(0, -20 if guard else -16), Color("6b4a22"), 2)
-	var tip := -20.0 if guard else -16.0
-	draw_colored_polygon(PackedVector2Array([Vector2(-3, tip + 1), Vector2(0, tip - 6), Vector2(3, tip + 1)]), Color("d8dde5"))
+	if guard:
+		draw_line(Vector2(0, 5), Vector2(0, -2), Color("6b4a22"), 3)
+		draw_line(Vector2(-4, -2), Vector2(4, -2), Color("d9a441"), 3)
+		draw_colored_polygon(PackedVector2Array([Vector2(-2, -3), Vector2(2, -3), Vector2(1.5, -19), Vector2(0, -22), Vector2(-1.5, -19)]), Color("e8edf3"))
+		draw_line(Vector2(0, -4), Vector2(0, -19), Color(0.6, 0.65, 0.72), 1)
+	else:
+		draw_line(Vector2(0, 6), Vector2(0, -15), Color("8a5a2b"), 2.5)
+		draw_polyline(PackedVector2Array([Vector2(-8, -11), Vector2(-3, -15), Vector2(3, -15), Vector2(8, -11)]), Color("9aa3ad"), 3.5)
+		draw_polyline(PackedVector2Array([Vector2(-8, -11), Vector2(-3, -15), Vector2(3, -15), Vector2(8, -11)]), INK, 1.0)
 	_reset()
 	var body_col: Color = T["color"]
 	if s.hurt > 0:
 		body_col = body_col.lerp(Color.WHITE, s.hurt)
+	if not guard:
+		# backpack
+		Art.fill_rrect(self, Rect2(fx - d * 7 - 3, by - 16, 6, 8), 2, Color("6b5a3a"), INK, 1.5)
 	Art.fill_rrect(self, Rect2(fx - 5.5, by - 16, 11, 10), 3, body_col, INK, 2)
+	draw_line(Vector2(fx - 5, by - 9), Vector2(fx + 5, by - 9), Color("5a3416"), 2)
 	if guard:
-		# round shield in front
+		# big round shield in front
 		var sc := Vector2(fx + d * 6, by - 11)
-		draw_circle(sc, 5, Color("d9a441"))
-		draw_arc(sc, 5, 0, TAU, 14, INK, 1.5, true)
-		draw_circle(sc, 1.6, T["dark"])
+		draw_circle(sc, 6.5, T["color"])
+		draw_arc(sc, 6.5, 0, TAU, 16, Color("d9a441"), 2, true)
+		draw_arc(sc, 7.5, 0, TAU, 16, INK, 1.2, true)
+		draw_circle(sc, 2, Color("ffd84a"))
 	draw_circle(Vector2(fx, by - 20.5), 5.5, Color("ffcfa6"))
 	draw_arc(Vector2(fx, by - 20.5), 5.5, 0, TAU, 16, INK, 2, true)
-	var helmet := PackedVector2Array()
-	for i in 9:
-		var a := PI + i * PI / 8.0
-		helmet.append(Vector2(fx, by - 21.5) + Vector2(cos(a), sin(a)) * 6.0)
-	Art.outline_poly(self, helmet, Color("c9ced6") if guard else T["dark"], INK, 2)
 	if guard:
-		draw_line(Vector2(fx, by - 27), Vector2(fx - d * 4, by - 33), T["color"], 3)   # plume
+		var helmet := PackedVector2Array()
+		for i in 9:
+			var a := PI + i * PI / 8.0
+			helmet.append(Vector2(fx, by - 21.5) + Vector2(cos(a), sin(a)) * 6.0)
+		Art.outline_poly(self, helmet, Color("c9ced6"), INK, 2)
+		draw_line(Vector2(fx, by - 27), Vector2(fx - d * 5, by - 34), T["color"], 3.5)   # plume
+	else:
+		# bandana with knot
+		draw_rect(Rect2(fx - 5.5, by - 26, 11, 4), T["color"])
+		draw_rect(Rect2(fx - 5.5, by - 26, 11, 4), INK, false, 1.2)
+		draw_line(Vector2(fx - d * 5, by - 24), Vector2(fx - d * 10, by - 22 + sin(g.t * 9 + s.x) * 2), T["color"], 2)
 	draw_circle(Vector2(fx + d * 2.5, by - 19.5), 2.2, Color.WHITE)
 	draw_circle(Vector2(fx + d * 3.2, by - 19.5), 1.1, Color.BLACK)
+	if s.atk > 0:
+		draw_line(Vector2(fx + d * 0.5, by - 23.5), Vector2(fx + d * 4.5, by - 22.5), INK, 1.5)   # angry brow
 	if s.hp < s.max_hp:
-		draw_rect(Rect2(fx - 8, by - 34, 16, 4), INK)
-		draw_rect(Rect2(fx - 7, by - 33, 14 * s.hp / s.max_hp, 2), Color("6be04a"))
+		draw_rect(Rect2(fx - 8, by - 38, 16, 4), INK)
+		draw_rect(Rect2(fx - 7, by - 37, 14 * maxf(0.0, s.hp) / s.max_hp, 2), Color("6be04a"))
 
 
 # ---------------------------------------------------------------- archer tower
+## A stone turret on the castle with an archer on top.
 func _draw_tower(tw) -> void:
 	var T: Dictionary = g.TEAM[tw.owner]
 	var x: float = tw.x
 	var y: float = tw.y
 	var w: float = tw.w
 	var h: float = tw.h
-	var wood := Color("9a6a3a").lerp(Color.WHITE, tw.hurt * 0.6)
-	# legs
-	draw_line(Vector2(x + 3, y + h), Vector2(x + 7, y + 18), Color("6b4a22"), 3)
-	draw_line(Vector2(x + w - 3, y + h), Vector2(x + w - 7, y + 18), Color("6b4a22"), 3)
-	draw_line(Vector2(x + 5, y + h - 8), Vector2(x + w - 5, y + 24), Color("6b4a22"), 2)
-	draw_line(Vector2(x + w - 5, y + h - 8), Vector2(x + 5, y + 24), Color("6b4a22"), 2)
-	# cabin
-	Art.fill_rrect(self, Rect2(x, y + 8, w, 12), 2, wood, INK, 2)
-	draw_rect(Rect2(x + w / 2 - 4, y + 10, 8, 6), Color(0.1, 0.07, 0.05))
-	# archer head in the window
-	draw_circle(Vector2(x + w / 2, y + 12), 3.0, Color("ffcfa6"))
-	# roof
-	Art.outline_poly(self, PackedVector2Array([Vector2(x - 4, y + 9), Vector2(x + w + 4, y + 9), Vector2(x + w / 2, y - 8)]), T["color"], INK, 2)
+	var d: float = tw.dir
+	var stone: Color = g.castle_style[tw.owner]["color"]
+	stone = stone.lerp(Color.WHITE, tw.hurt * 0.6)
+	var mortar := stone.darkened(0.45)
+	# body
+	var body := Rect2(x + 3, y + 16, w - 6, h - 16)
+	draw_rect(body, stone)
+	var row := 0
+	var yy := y + 16.0
+	while yy < y + h:
+		draw_line(Vector2(x + 3, yy), Vector2(x + w - 3, yy), mortar, 1.0)
+		var jx := x + 3 + (8.0 if row % 2 == 0 else 15.0)
+		draw_line(Vector2(jx, yy), Vector2(jx, minf(yy + 8, y + h)), mortar, 1.0)
+		yy += 8.0
+		row += 1
+	draw_rect(Rect2(x + w / 2 - 1.5, y + 24, 3, 10), Color(0.1, 0.07, 0.05))
+	draw_rect(body, INK, false, 2.5)
+	# archer (behind the battlements)
+	var ax := x + w / 2
+	var ay := y + 5
+	draw_rect(Rect2(ax - 4, ay + 2, 8, 8), T["color"])
+	draw_circle(Vector2(ax, ay), 4.2, Color("ffcfa6"))
+	draw_arc(Vector2(ax, ay), 4.2, 0, TAU, 12, INK, 1.5, true)
+	draw_rect(Rect2(ax - 4.5, ay - 5, 9, 3), T["dark"])
+	draw_circle(Vector2(ax + d * 2, ay), 1.0, Color.BLACK)
+	# bow: pulled back while shooting
+	var pull := 4.0 if tw.atk > 0 else 0.0
+	var bc := Vector2(ax + d * 5, ay + 2)
+	draw_arc(bc, 8, -PI / 2 if d > 0 else PI / 2, PI / 2 if d > 0 else PI * 1.5, 10, Color("8a5a2b"), 2, true)
+	var top := bc + Vector2(0, -8)
+	var bot := bc + Vector2(0, 8)
+	var mid := bc + Vector2(-d * pull, 0)
+	draw_polyline(PackedVector2Array([top, mid, bot]), Color(1, 1, 1, 0.8), 1)
+	if tw.atk > 0:
+		draw_line(mid, mid + Vector2(d * 14, 0), Color("6b4a22"), 1.5)
+	# platform and battlements
+	var plat := Rect2(x, y + 10, w, 7)
+	draw_rect(plat, stone)
+	draw_rect(plat, INK, false, 2.5)
+	for mx in [x, x + w - 8]:
+		draw_rect(Rect2(mx, y + 2, 8, 9), stone)
+		draw_rect(Rect2(mx, y + 2, 8, 9), INK, false, 2)
+	# pennant on a pole at the back
+	var px := x + (2.0 if d > 0 else w - 2.0)
+	draw_line(Vector2(px, y + 2), Vector2(px, y - 18), INK, 2)
+	var dir := 1.0 if g.wind >= 0 else -1.0
+	var wv := sin(g.t * 8.0 + x) * 1.5
+	draw_colored_polygon(PackedVector2Array([Vector2(px, y - 18), Vector2(px + dir * 14, y - 14 + wv), Vector2(px, y - 10)]), T["color"])
+	var al: int = g.lvl(tw.owner, "archers")
+	for i in al:
+		Art.star(self, Vector2(x + w / 2 - (al - 1) * 5 + i * 10, y + 40), 4, Color("ffd84a"))
 	if tw.hp < tw.max_hp:
-		draw_rect(Rect2(x, y - 16, w, 4), INK)
-		draw_rect(Rect2(x + 1, y - 15, (w - 2) * maxf(0.0, tw.hp) / tw.max_hp, 2), Color("6be04a"))
+		draw_rect(Rect2(x, y - 26, w, 4), INK)
+		draw_rect(Rect2(x + 1, y - 25, (w - 2) * maxf(0.0, tw.hp) / tw.max_hp, 2), Color("6be04a"))
 
 
 # ---------------------------------------------------------------- projectiles
@@ -277,6 +543,8 @@ func _draw_proj(p) -> void:
 	var a := atan2(p.vy, p.vx)
 	match p.type:
 		"spear", "arrow":
+			if p.prog < 0.0:
+				return
 			draw_set_transform(pos, a, Vector2.ONE)
 			var length := 16.0 if p.type == "spear" else 12.0
 			draw_line(Vector2(-length, 0), Vector2(length - 4, 0), Color("6b4a22"), 2)
@@ -399,6 +667,14 @@ func _draw_aim() -> void:
 		draw_arc(hc, 10, 0, TAU, 20, T["color"], 3, true)
 		for o in [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]:
 			draw_line(hc + o * 5, hc + o * 15, T["color"], 3)
+		var sl: int = g.lvl(p, "scope")
+		if sl > 0 and not g.players[p].ai:
+			var pw: float = g.power if g.charging else g.players[p].last_power
+			var path: PackedVector2Array = g.trajectory(p, g.weapon, ang, pw, 0.7 if sl == 1 else 2.0)
+			for i in range(2, path.size(), 3):
+				var f := 1.0 - float(i) / path.size() * 0.6
+				draw_circle(path[i], 3.2, Color(INK, 0.5 * f))
+				draw_circle(path[i], 2.2, Color(1, 1, 1, 0.9 * f))
 		if g.charging:
 			var n := int(g.power * 18)
 			for i in n + 1:

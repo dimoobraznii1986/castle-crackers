@@ -23,6 +23,10 @@ var over_panel: Control
 var over_title: Label
 var over_sub: Label
 var mute_btn: Button
+var end_btn: Button
+var group_heads := {}
+var shop_panel: Control
+var shop_cards: Array = []
 var pending_mode := "duel"
 
 
@@ -30,10 +34,12 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_bar()
+	_build_end_button()
 	_build_mute()
 	_build_title()
 	_build_map()
 	_build_over()
+	_build_shop()
 
 
 # ---------------------------------------------------------------- styles
@@ -88,38 +94,50 @@ func _big_button(text: String, color: Color, width := 330) -> Button:
 # ---------------------------------------------------------------- weapon bar
 func _build_bar() -> void:
 	bar = HBoxContainer.new()
-	bar.position = Vector2(0, 900 - 90)
-	bar.size = Vector2(1600, 80)
+	bar.position = Vector2(0, 900 - 116)
+	bar.size = Vector2(1600, 110)
 	bar.alignment = BoxContainer.ALIGNMENT_CENTER
-	bar.add_theme_constant_override("separation", 8)
+	bar.add_theme_constant_override("separation", 34)
 	add_child(bar)
+	var rows := {}
+	for grp in ["attack", "build"]:
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 14)
+		var head := _label("", 16, Color.WHITE, 6)
+		col.add_child(head)
+		group_heads[grp] = head
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		col.add_child(row)
+		rows[grp] = row
+		bar.add_child(col)
 	for i in g.WEAPONS.size():
 		var w: Dictionary = g.WEAPONS[i]
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(106, 72)
+		b.custom_minimum_size = Vector2(96, 70)
 		b.focus_mode = Control.FOCUS_NONE
 		b.pressed.connect(func(): g.select_weapon(w["id"]))
-		var icon := _label(w["icon"], 26, Color.WHITE)
+		var icon := _label(w["icon"], 25, Color.WHITE)
 		icon.position = Vector2(0, 4)
-		icon.size = Vector2(106, 34)
+		icon.size = Vector2(96, 34)
 		b.add_child(icon)
-		var nm := _label(w["name"], 13, INK)
+		var nm := _label(w["name"], 12, INK)
 		nm.position = Vector2(0, 42)
-		nm.size = Vector2(106, 20)
+		nm.size = Vector2(96, 20)
 		b.add_child(nm)
 		var key := _label(g.KEYS[i], 11, Color(INK, 0.55))
 		key.position = Vector2(6, 3)
 		key.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.add_child(key)
 		var tag := _label("", 12, Color("ffd84a"))
-		tag.position = Vector2(62, -12)
+		tag.position = Vector2(52, -12)
 		tag.size = Vector2(52, 20)
 		var tag_bg := StyleBoxFlat.new()
 		tag_bg.bg_color = INK
 		tag_bg.set_corner_radius_all(9)
 		tag.add_theme_stylebox_override("normal", tag_bg)
 		b.add_child(tag)
-		bar.add_child(b)
+		rows[w["group"]].add_child(b)
 		buttons.append({"btn": b, "icon": icon, "name": nm, "tag": tag, "w": w})
 	bar.visible = false
 
@@ -127,6 +145,7 @@ func _build_bar() -> void:
 func refresh_bar() -> void:
 	var show: bool = g.state == "aim" or g.state == "busy" or g.state == "units"
 	bar.visible = show
+	end_btn.visible = show and g.state == "aim" and not g.players[g.turn].ai and g.mode != "practice" and (g.shot_done or g.built)
 	if not show:
 		return
 	var p: int = g.turn
@@ -134,15 +153,18 @@ func refresh_bar() -> void:
 	var active: bool = g.state == "aim" and not P.ai
 	var practice: bool = g.mode == "practice"
 	bar.modulate = Color(1, 1, 1, 1.0 if active else 0.45)
+	group_heads["attack"].text = "✅ ATTACK DONE" if g.shot_done else "⚔️ ATTACK  (1 per turn)"
+	group_heads["build"].text = "✅ BUILD DONE" if g.built else "🔨 BUILD / UPGRADE  (1 per turn)"
 	var team: Color = g.TEAM[p]["color"]
 	for item in buttons:
 		var w: Dictionary = item["w"]
 		var b: Button = item["btn"]
 		var inv: int = P.inv[w["id"]]
 		var locked: bool = w["secret"] and inv <= 0
+		var done: bool = g.group_used(w["id"])
 		var usable: bool = g.can_use(p, w["id"])
 		var selected: bool = g.weapon == w["id"]
-		var bg := Color("ffe9a8")
+		var bg := Color("ffe9a8") if w["group"] == "attack" else Color("d8f0c0")
 		if locked:
 			bg = Color("b3a8d6")
 		elif selected:
@@ -153,14 +175,16 @@ func refresh_bar() -> void:
 			b.add_theme_stylebox_override(st, sb)
 		b.add_theme_stylebox_override("hover", _box(bg.lightened(0.3), border, 5 if selected else 3))
 		b.disabled = not active
-		b.modulate = Color(1, 1, 1, 1) if (usable or locked) else Color(0.75, 0.75, 0.75, 0.6)
+		b.modulate = Color(1, 1, 1, 1) if ((usable or locked) and not done) else Color(0.75, 0.75, 0.75, 0.5)
 		b.position.y = -6 if selected else 0
 		item["icon"].text = "🔒" if locked else w["icon"]
 		item["name"].text = "Secret" if locked else w["name"]
 		b.tooltip_text = "Secret weapon. Find it in a bonus crate!" if locked else w["desc"]
 		var tag: Label = item["tag"]
 		tag.visible = true
-		if practice and (w["cost"] > 0 or w["secret"]):
+		if w["id"] == "upgrade":
+			tag.visible = false
+		elif practice and (w["cost"] > 0 or w["secret"]):
 			tag.text = "FREE"
 			tag.label_settings.font_color = Color("8dff7a")
 		elif inv > 0:
@@ -174,6 +198,101 @@ func refresh_bar() -> void:
 		else:
 			tag.text = "FREE"
 			tag.label_settings.font_color = Color("8dff7a")
+
+
+func _build_end_button() -> void:
+	end_btn = _big_button("END TURN ⏎", Color("3fa34d"), 200)
+	end_btn.custom_minimum_size = Vector2(200, 56)
+	end_btn.add_theme_font_size_override("font_size", 22)
+	end_btn.position = Vector2(1600 - 290, 900 - 180)
+	end_btn.tooltip_text = "Finish your turn (Enter)"
+	end_btn.pressed.connect(func(): g.end_turn())
+	end_btn.visible = false
+	add_child(end_btn)
+
+
+# ---------------------------------------------------------------- upgrade shop
+func _build_shop() -> void:
+	shop_panel = _overlay(0.55)
+	var col := _centered_column(shop_panel, 22)
+	col.add_child(_title_label("UPGRADES", 72))
+	col.add_child(_label("Upgrades last for the whole battle. Buying one is your build move.", 24, Color.WHITE, 8))
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 18)
+	col.add_child(row)
+	for u in g.UPGRADES:
+		var b := Button.new()
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(250, 290)
+		var id: String = u["id"]
+		b.pressed.connect(func():
+			if g.buy_upgrade(id):
+				shop_panel.visible = false
+			else:
+				refresh_shop())
+		var ic := _label(u["icon"], 64, Color.WHITE)
+		ic.position = Vector2(0, 14)
+		ic.size = Vector2(250, 80)
+		b.add_child(ic)
+		var nm := _label(u["name"], 26, INK)
+		nm.position = Vector2(0, 100)
+		nm.size = Vector2(250, 36)
+		b.add_child(nm)
+		var stars := _label("", 26, Color("e8a81e"))
+		stars.position = Vector2(0, 136)
+		stars.size = Vector2(250, 34)
+		b.add_child(stars)
+		var info := _label(u["desc"], 16, INK)
+		info.position = Vector2(14, 172)
+		info.size = Vector2(222, 60)
+		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		b.add_child(info)
+		var price := _label("", 24, Color.WHITE, 8)
+		price.position = Vector2(0, 240)
+		price.size = Vector2(250, 36)
+		b.add_child(price)
+		row.add_child(b)
+		shop_cards.append({"btn": b, "id": id, "stars": stars, "price": price, "max": u["costs"].size()})
+	var back_row := HBoxContainer.new()
+	back_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	var back := _big_button("CLOSE", Color("6a7a96"), 220)
+	back.pressed.connect(func(): shop_panel.visible = false)
+	back_row.add_child(back)
+	col.add_child(back_row)
+	shop_panel.visible = false
+
+
+func show_shop() -> void:
+	refresh_shop()
+	shop_panel.visible = true
+
+
+func refresh_shop() -> void:
+	var p: int = g.turn
+	var gold: int = g.players[p].gold
+	var practice: bool = g.mode == "practice"
+	for card in shop_cards:
+		var l: int = g.lvl(p, card["id"])
+		var cost: int = g.upgrade_cost(p, card["id"])
+		var stars := ""
+		for i in card["max"]:
+			stars += "★" if i < l else "☆"
+		card["stars"].text = stars
+		var ok: bool = cost >= 0 and (practice or gold >= cost)
+		if cost < 0:
+			card["price"].text = "MAX"
+		elif practice:
+			card["price"].text = "FREE"
+		else:
+			card["price"].text = "💰 %d" % cost
+		card["price"].label_settings.font_color = Color("8dff7a") if ok else Color("ff9a8a")
+		var bg := Color("fff3cf") if ok else Color("c9c2b0")
+		var b: Button = card["btn"]
+		b.add_theme_stylebox_override("normal", _box(bg, INK, 4, 20))
+		b.add_theme_stylebox_override("hover", _box(bg.lightened(0.3), Color("ffd84a") if ok else INK, 6 if ok else 4, 20))
+		b.add_theme_stylebox_override("pressed", _box(bg.darkened(0.1), INK, 4, 20))
+		b.disabled = not ok
 
 
 # ---------------------------------------------------------------- mute
@@ -247,7 +366,9 @@ func _build_title() -> void:
 	for line in [
 		"🎯 Move the mouse to aim. Hold the mouse button (or SPACE) to charge. Let go to fire.",
 		"👑 Break the enemy castle. Destroy the treasure inside to win.",
-		"📦 Shoot the ? crates to win gold, weapons, armor and secret weapons.",
+		"🔁 Each turn: 1 attack (shoot or paratroopers) + 1 build move (guards, tower, wall or upgrade).",
+		"📦 Shoot the ? crates to win gold, weapons, repairs and secret weapons.",
+		"⬆️ Buy upgrades: bigger cannon, aim scope, strong stone, master archers, sharp swords.",
 		"🪂 Drop paratroopers on the enemy castle. Defend yours with guards and archer towers.",
 		"💨 Watch the wind. Rockets and parachutes feel it the most.",
 	]:
@@ -350,6 +471,7 @@ func _choose_mode(game_mode: String) -> void:
 
 
 func show_title() -> void:
+	shop_panel.visible = false
 	title_panel.visible = true
 	map_panel.visible = false
 	over_panel.visible = false
@@ -357,6 +479,7 @@ func show_title() -> void:
 
 
 func hide_overlays() -> void:
+	shop_panel.visible = false
 	title_panel.visible = false
 	map_panel.visible = false
 	over_panel.visible = false
@@ -453,25 +576,29 @@ func _draw_texts() -> void:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if not g.msg.is_empty():
 		var c: Color = g.msg["color"]
-		Art.text(self, g.msg["text"], Vector2(800, 770), 24, Color(c, clampf(g.msg["life"] / 0.4, 0.0, 1.0)))
+		Art.text(self, g.msg["text"], Vector2(800, 760), 22, Color(c, clampf(g.msg["life"] / 0.4, 0.0, 1.0)))
 	if g.state == "units":
-		Art.text(self, "⚔️ Your soldiers and towers attack!", Vector2(800, 735), 24, Color("ffe9a0"))
+		Art.text(self, "⚔️ Your soldiers and towers attack!", Vector2(800, 712), 24, Color("ffe9a0"))
 		return
 	if g.state == "aim":
 		var w: Dictionary = g.wdef(g.weapon)
 		if g.players[g.turn].ai:
-			Art.text(self, "%s is thinking..." % g.team_name(g.turn), Vector2(800, 735), 24, Color("ffe9a0"))
+			Art.text(self, "%s is thinking..." % g.team_name(g.turn), Vector2(800, 712), 24, Color("ffe9a0"))
 			return
 		var hint: String
+		if w["kind"] == "none":
+			Art.text(self, "🔨 Build move: pick Guards, Tower, Wall or Upgrades.", Vector2(800, 712), 22, Color.WHITE)
+			Art.text(self, "Or press END TURN (Enter).", Vector2(800, 740), 18, Color("ffe9a0"))
+			return
 		if w["kind"] == "shoot":
 			hint = "Move the mouse to aim. Hold the mouse (or SPACE) to charge. Let go to fire."
 		elif w["id"] == "wall":
 			hint = "Click on your side of the map to build a wall."
 		elif w["id"] == "tower":
-			hint = "Click on your castle to build the tower."
+			hint = "Click on top of your castle to build the tower."
 		elif w["id"] == "meteor":
 			hint = "Click where the meteors should fall."
 		else:
 			hint = "Click on the map (or press SPACE) to use %s." % w["name"]
-		Art.text(self, "%s  %s: %s" % [w["icon"], w["name"], w["desc"]], Vector2(800, 712), 20, Color.WHITE)
-		Art.text(self, hint, Vector2(800, 740), 17, Color("ffe9a0"))
+		Art.text(self, "%s  %s: %s" % [w["icon"], w["name"], w["desc"]], Vector2(800, 700), 20, Color.WHITE)
+		Art.text(self, hint, Vector2(800, 726), 17, Color("ffe9a0"))
