@@ -1,0 +1,4 @@
+.playwright-mcp/
+.DS_Store
+# Godot cache (made again on import)
+godot/.godot/

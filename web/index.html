@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Castle Crackers</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  html, body { margin: 0; height: 100%; background: #10131c; overflow: hidden;
+    font-family: "Trebuchet MS", "Arial Rounded MT Bold", sans-serif; user-select: none; }
+  #wrap { position: absolute; left: 50%; top: 50%; width: 1600px; height: 900px;
+    margin-left: -800px; margin-top: -450px; transform-origin: center center; }
+  canvas { display: block; width: 1600px; height: 900px; cursor: crosshair; }
+
+  #bar { position: absolute; left: 0; right: 0; bottom: 8px; display: flex;
+    justify-content: center; gap: 7px; transition: opacity .2s; }
+  #bar.busy { opacity: .4; pointer-events: none; }
+  .wbtn { position: relative; width: 106px; height: 72px; padding: 2px;
+    border: 3px solid #2b1b0e; border-radius: 13px; cursor: pointer; color: #2b1b0e;
+    background: linear-gradient(#fff3cf, #f0bf5c); box-shadow: 0 4px 0 #2b1b0e;
+    font-family: inherit; transition: transform .08s; }
+  .wbtn:hover { transform: translateY(-3px); }
+  .wbtn.sel { background: linear-gradient(#fffdf2, #ffe07a); outline: 5px solid var(--team);
+    transform: translateY(-5px); }
+  .wbtn.off { filter: grayscale(.85); opacity: .55; }
+  .wbtn.locked { background: linear-gradient(#cfc7e8, #8f83b8); }
+  .wbtn .ic { font-size: 27px; line-height: 32px; }
+  .wbtn .nm { font-size: 12px; font-weight: 900; }
+  .wbtn .tag { position: absolute; top: -11px; right: -9px; background: #2b1b0e; color: #ffd84a;
+    font-size: 12px; font-weight: 900; border-radius: 9px; padding: 1px 6px; }
+  .wbtn .tag.free { color: #8dff7a; }
+  .wbtn .key { position: absolute; top: 3px; left: 6px; font-size: 10px; font-weight: 900; opacity: .55; }
+
+  .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; background: rgba(8, 18, 40, .62); color: #fff; text-align: center; }
+  .overlay.hidden { display: none; }
+  .overlay h1 { margin: 0; font-size: 110px; letter-spacing: 4px; color: #ffd84a;
+    -webkit-text-stroke: 7px #2b1b0e; paint-order: stroke fill; transform: rotate(-3deg);
+    text-shadow: 0 10px 0 #2b1b0e; }
+  .overlay .tagline { font-size: 30px; font-weight: 900; margin: 18px 0 26px;
+    -webkit-text-stroke: 5px #2b1b0e; paint-order: stroke fill; }
+  .rules { background: rgba(255, 248, 230, .95); color: #2b1b0e; border: 4px solid #2b1b0e;
+    border-radius: 20px; padding: 18px 30px; font-size: 21px; font-weight: 700; text-align: left;
+    line-height: 1.75; box-shadow: 0 8px 0 #2b1b0e; }
+  .bigbtn { margin-top: 34px; font-family: inherit; font-size: 40px; font-weight: 900; color: #fff;
+    padding: 14px 54px; border: 5px solid #2b1b0e; border-radius: 22px; cursor: pointer;
+    background: linear-gradient(#ff7a5c, #d8321e); box-shadow: 0 8px 0 #2b1b0e;
+    -webkit-text-stroke: 2px #2b1b0e; paint-order: stroke fill; }
+  .bigbtn:hover { transform: translateY(-3px); }
+  #mute { position: absolute; right: 14px; bottom: 96px; width: 44px; height: 44px; font-size: 22px;
+    border: 3px solid #2b1b0e; border-radius: 50%; background: #fff3cf; cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="1600" height="900"></canvas>
+  <div id="bar"></div>
+  <button id="mute" title="Sound on/off (M)">🔊</button>
+
+  <div id="title" class="overlay">
+    <h1>CASTLE CRACKERS</h1>
+    <div class="tagline">Two kingdoms. Two treasures. Only one winner.</div>
+    <div class="rules">
+      <div>🎯 Move the mouse to aim. Hold the mouse button (or SPACE) to charge. Let go to fire.</div>
+      <div>👑 Break the enemy castle. Destroy the treasure inside to win.</div>
+      <div>📦 Shoot the <b>?</b> crates to win gold, weapons, armor and <b>secret weapons</b>.</div>
+      <div>🧱 Use your turn to shoot, build walls, repair, or send soldiers.</div>
+      <div>💨 Watch the wind. Rockets feel it the most.</div>
+    </div>
+    <button id="startBtn" class="bigbtn">START BATTLE</button>
+  </div>
+
+  <div id="over" class="overlay hidden">
+    <h1 id="overTitle">RED WINS!</h1>
+    <div id="overSub" class="tagline"></div>
+    <button id="againBtn" class="bigbtn">PLAY AGAIN</button>
+  </div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>
